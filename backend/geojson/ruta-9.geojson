@@ -1,5 +1,10 @@
 {
     "type": "FeatureCollection",
+    "properties": {
+	    "route": "9",
+	    "nase": "Ruta 9",
+	    "color": "#61000f"
+    },
     "features": [
         {
             "type": "Feature",
@@ -3286,7 +3291,6 @@
             },
             "properties": {
                 "name": "9 REGRESO",
-                
                 "styleUrl": "#line-0097A7-3519",
                 "styleHash": "-33986bd6",
                 "styleMapHash": {

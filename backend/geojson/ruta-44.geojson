@@ -1,5 +1,10 @@
 {
     "type": "FeatureCollection",
+	"properties": {
+		"route": "44",
+		"nase": "Ruta 44",
+		"color": "#143a78"
+	},
     "features": [
         {
             "type": "Feature",

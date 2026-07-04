@@ -1,5 +1,10 @@
 {
     "type": "FeatureCollection",
+    "properties": {
+		"route": "29-E",
+		"nase": "Ruta 29-E",
+		"color": "#61000f"
+	},
     "features": [
         {
             "type": "Feature",
