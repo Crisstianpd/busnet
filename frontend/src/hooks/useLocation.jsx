@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 
 export default function useLocation() {
+    const isGeolocationSupported = "geolocation" in navigator;
     const [location, setLocation] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(isGeolocationSupported);
+    const [error, setError] = useState(
+        isGeolocationSupported
+            ? null
+            : "Tu navegador no soporta geolocalización."
+    );
 
     useEffect(() => {
-        if (!navigator.geolocation) {
-            setError("Tu navegador no soporta geolocalización.");
-            setLoading(false);
-            return;
-        }
+        if (!isGeolocationSupported) return;
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -31,7 +32,7 @@ export default function useLocation() {
                 maximumAge: 0,
             }
         );
-    }, []);
+    }, [isGeolocationSupported]);
 
     return {
         location,
