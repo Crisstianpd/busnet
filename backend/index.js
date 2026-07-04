@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import { centerOfMass } from "@turf/turf";
 
 const app = express();
 
@@ -9,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = 3000;
+const EL_SALVADOR_BBOX = [-90.15, 13.0, -87.55, 14.6];
 
 // Carpeta donde se encuentran los GeoJSON
 const geojsonFolder = "./geojson";
@@ -44,6 +46,66 @@ const routes = fs
 
 console.log(`🚍 Se cargaron ${routes.length} rutas correctamente.`);
 
+function normalizeText(value = "") {
+    return String(value)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+function stripHtml(value = "") {
+    return String(value).replace(/<[^>]*>/g, " ");
+}
+
+function getFeatureCenter(feature) {
+    try {
+        const center = centerOfMass(feature);
+        const coordinates = center?.geometry?.coordinates;
+
+        if (!Array.isArray(coordinates) || coordinates.length < 2) {
+            return null;
+        }
+
+        return coordinates;
+    }
+    catch {
+        return null;
+    }
+}
+
+function isInsideElSalvador([longitude, latitude]) {
+    return longitude >= EL_SALVADOR_BBOX[0]
+        && latitude >= EL_SALVADOR_BBOX[1]
+        && longitude <= EL_SALVADOR_BBOX[2]
+        && latitude <= EL_SALVADOR_BBOX[3];
+}
+
+function buildSearchText(route, feature) {
+    const values = [
+        route.route,
+        route.name,
+        route.color,
+        route.geojson?.properties?.route,
+        route.geojson?.properties?.name,
+        feature?.properties?.name,
+        feature?.properties?.description,
+        feature?.properties?.DEPARTAMEN,
+        feature?.properties?.Nombre_de_,
+        feature?.properties?.SENTIDO,
+        feature?.properties?.TIPO,
+        feature?.properties?.SUBTIPO,
+        feature?.properties?.Código_de,
+        feature?.properties?.Description,
+    ];
+
+    return normalizeText(
+        values
+            .filter(Boolean)
+            .map(stripHtml)
+            .join(" ")
+    );
+}
+
 // =========================================
 // Devuelve la lista de rutas
 // =========================================
@@ -74,6 +136,46 @@ app.get("/routes/:route", (req, res) => {
     }
 
     res.json(route.geojson);
+});
+
+app.get("/search", (req, res) => {
+    const query = normalizeText(req.query.q || "").trim();
+
+    if (!query) {
+        return res.json([]);
+    }
+
+    const results = [];
+
+    routes.forEach(route => {
+        const features = route.geojson?.features || [];
+
+        features.forEach((feature, featureIndex) => {
+            const searchText = buildSearchText(route, feature);
+
+            if (!searchText.includes(query)) {
+                return;
+            }
+
+            const coordinates = getFeatureCenter(feature);
+
+            if (!coordinates || !isInsideElSalvador(coordinates)) {
+                return;
+            }
+
+            results.push({
+                id: `${route.route}-${featureIndex}`,
+                title: feature?.properties?.name || route.name,
+                subtitle: route.route,
+                description: stripHtml(feature?.properties?.description || route.name),
+                coordinates,
+                color: route.color,
+                route: route.route,
+            });
+        });
+    });
+
+    res.json(results.slice(0, 20));
 });
 
 // =========================================

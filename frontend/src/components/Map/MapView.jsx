@@ -4,13 +4,15 @@ import { useEffect, useRef } from "react";
 import useLocation from "../../hooks/useLocation";
 import { lightenColor } from "../../utils/colors.js";
 
-export default function MapView({ geojson }) {
+export default function MapView({ geojson, focusLocation }) {
 
     const { location } = useLocation();
 
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
+    const searchMarkerRef = useRef(null);
+    const searchMarkerTimeoutRef = useRef(null);
 
     const ROUTE_SOURCE = "route-source";
     const ROUTE_LAYER = "route-layer";
@@ -78,6 +80,68 @@ export default function MapView({ geojson }) {
         }
 
     }, [location]);
+
+    useEffect(() => {
+
+        return () => {
+
+            if (searchMarkerTimeoutRef.current) {
+                clearTimeout(searchMarkerTimeoutRef.current);
+            }
+
+            if (searchMarkerRef.current) {
+                searchMarkerRef.current.remove();
+            }
+
+        };
+
+    }, []);
+
+    useEffect(() => {
+
+        if (!focusLocation?.coordinates || !mapRef.current) return;
+
+        const [longitude, latitude] = focusLocation.coordinates;
+
+        mapRef.current.flyTo({
+
+            center: [longitude, latitude],
+
+            zoom: 16
+
+        });
+
+        if (searchMarkerRef.current) {
+
+            searchMarkerRef.current.remove();
+        }
+
+        if (searchMarkerTimeoutRef.current) {
+
+            clearTimeout(searchMarkerTimeoutRef.current);
+        }
+
+        searchMarkerRef.current = new maplibregl.Marker({
+
+            color: "#f97316"
+
+        })
+
+            .setLngLat([longitude, latitude])
+
+            .addTo(mapRef.current);
+
+        searchMarkerTimeoutRef.current = setTimeout(() => {
+
+            if (searchMarkerRef.current) {
+
+                searchMarkerRef.current.remove();
+                searchMarkerRef.current = null;
+            }
+
+        }, 4500);
+
+    }, [focusLocation]);
 
     useEffect(() => {
 
