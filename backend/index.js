@@ -3,6 +3,9 @@ import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { centerOfMass } from "@turf/turf";
+import { normalizeRoutes } from "./services/geojsonNormalizer.js";
+import { validatePlanRequest } from "./services/planRequestValidator.js";
+import { planTrip } from "./services/routePlanner.js";
 
 const app = express();
 
@@ -106,6 +109,12 @@ function buildSearchText(route, feature) {
     );
 }
 
+const normalizedRoutes = normalizeRoutes(routes);
+
+console.log(
+    `🗺️ ${normalizedRoutes.length} rutas listas para planificación.`
+);
+
 // =========================================
 // Devuelve la lista de rutas
 // =========================================
@@ -176,6 +185,35 @@ app.get("/search", (req, res) => {
     });
 
     res.json(results.slice(0, 20));
+});
+
+// =========================================
+
+app.post("/plan", (req, res) => {
+    const validatedRequest = validatePlanRequest(req.body);
+
+    if (validatedRequest.error) {
+        return res.status(400).json({
+            error: validatedRequest.error
+        });
+    }
+
+    const result = planTrip({
+        origin: validatedRequest.origin,
+        destination: validatedRequest.destination,
+        routes: normalizedRoutes,
+        options: validatedRequest.options
+    });
+
+    if (!result.bestOption) {
+        return res.status(404).json({
+            error:
+                "No se encontraron rutas cercanas dentro del radio máximo.",
+            ...result
+        });
+    }
+
+    return res.json(result);
 });
 
 // =========================================

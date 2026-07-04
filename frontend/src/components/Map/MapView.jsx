@@ -1,234 +1,229 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
-import useLocation from "../../hooks/useLocation";
 import { lightenColor } from "../../utils/colors.js";
 
-export default function MapView({ geojson, focusLocation }) {
+function toLngLat(location) {
+    return [location.longitude, location.latitude];
+}
 
-    const { location } = useLocation();
+function getRouteColor(geojson) {
+    return (
+        geojson?.properties?.color ||
+        geojson?.features?.[0]?.properties?.color ||
+        "#2563EB"
+    );
+}
 
+export default function MapView({
+    geojson,
+    plannedGeojsons = [],
+    location,
+    destination,
+    plan,
+    onDestinationSelect
+}) {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
-    const markerRef = useRef(null);
-    const searchMarkerRef = useRef(null);
-    const searchMarkerTimeoutRef = useRef(null);
-
-    const ROUTE_SOURCE = "route-source";
-    const ROUTE_LAYER = "route-layer";
+    const originMarkerRef = useRef(null);
+    const destinationMarkerRef = useRef(null);
+    const planMarkersRef = useRef([]);
+    const renderedLayersRef = useRef([]);
 
     useEffect(() => {
-
         const map = new maplibregl.Map({
-
             container: mapContainer.current,
-
             style: "https://tiles.openfreemap.org/styles/liberty",
-
             center: [-89.2182, 13.6929],
-
             zoom: 12
-
         });
 
         map.addControl(
-
             new maplibregl.NavigationControl(),
-
             "top-right"
-
         );
 
         mapRef.current = map;
 
         return () => map.remove();
-
     }, []);
 
     useEffect(() => {
+        const map = mapRef.current;
 
-        if (!location || !mapRef.current) return;
+        if (!map || !onDestinationSelect) return undefined;
 
-        const { latitude, longitude } = location;
+        const handleClick = event => {
+            onDestinationSelect({
+                latitude: event.lngLat.lat,
+                longitude: event.lngLat.lng
+            });
+        };
 
-        mapRef.current.flyTo({
+        map.on("click", handleClick);
 
-            center: [longitude, latitude],
+        return () => map.off("click", handleClick);
+    }, [onDestinationSelect]);
 
-            zoom: 16
+    useEffect(() => {
+        const map = mapRef.current;
 
-        });
+        if (!location || !map) return;
 
-        if (!markerRef.current) {
-
-            markerRef.current = new maplibregl.Marker({
-
+        if (!originMarkerRef.current) {
+            originMarkerRef.current = new maplibregl.Marker({
                 color: "#2563EB"
-
             })
-
-                .setLngLat([longitude, latitude])
-
-                .addTo(mapRef.current);
-
+                .setLngLat(toLngLat(location))
+                .setPopup(new maplibregl.Popup().setText("Tu ubicación"))
+                .addTo(map);
         }
-
         else {
-
-            markerRef.current.setLngLat([longitude, latitude]);
-
+            originMarkerRef.current.setLngLat(toLngLat(location));
         }
-
     }, [location]);
 
     useEffect(() => {
-
-        return () => {
-
-            if (searchMarkerTimeoutRef.current) {
-                clearTimeout(searchMarkerTimeoutRef.current);
-            }
-
-            if (searchMarkerRef.current) {
-                searchMarkerRef.current.remove();
-            }
-
-        };
-
-    }, []);
-
-    useEffect(() => {
-
-        if (!focusLocation?.coordinates || !mapRef.current) return;
-
-        const [longitude, latitude] = focusLocation.coordinates;
-
-        mapRef.current.flyTo({
-
-            center: [longitude, latitude],
-
-            zoom: 16
-
-        });
-
-        if (searchMarkerRef.current) {
-
-            searchMarkerRef.current.remove();
-        }
-
-        if (searchMarkerTimeoutRef.current) {
-
-            clearTimeout(searchMarkerTimeoutRef.current);
-        }
-
-        searchMarkerRef.current = new maplibregl.Marker({
-
-            color: "#f97316"
-
-        })
-
-            .setLngLat([longitude, latitude])
-
-            .addTo(mapRef.current);
-
-        searchMarkerTimeoutRef.current = setTimeout(() => {
-
-            if (searchMarkerRef.current) {
-
-                searchMarkerRef.current.remove();
-                searchMarkerRef.current = null;
-            }
-
-        }, 4500);
-
-    }, [focusLocation]);
-
-    useEffect(() => {
-
-        if (!mapRef.current) return;
-
         const map = mapRef.current;
 
-        if (map.getLayer(ROUTE_LAYER))
-            map.removeLayer(ROUTE_LAYER);
+        if (!destination || !map) return;
 
-        if (map.getSource(ROUTE_SOURCE))
-            map.removeSource(ROUTE_SOURCE);
+        if (!destinationMarkerRef.current) {
+            destinationMarkerRef.current = new maplibregl.Marker({
+                color: "#DC2626"
+            })
+                .setLngLat(toLngLat(destination))
+                .setPopup(new maplibregl.Popup().setText("Destino"))
+                .addTo(map);
+        }
+        else {
+            destinationMarkerRef.current.setLngLat(toLngLat(destination));
+        }
 
-        if (!geojson) return;
+        if (location) {
+            const bounds = new maplibregl.LngLatBounds();
 
-        const baseColor = geojson.properties.color;
-
-        const returnColor = lightenColor(baseColor, 45);
-
-        const draw = () => {
-
-            map.addSource(ROUTE_SOURCE, {
-
-                type: "geojson",
-
-                data: geojson
-
+            bounds.extend(toLngLat(location));
+            bounds.extend(toLngLat(destination));
+            map.fitBounds(bounds, {
+                padding: 90,
+                maxZoom: 15
             });
-
-            map.addLayer({
-
-                id: ROUTE_LAYER,
-
-                type: "line",
-
-                source: ROUTE_SOURCE,
-
-                paint: {
-
-                    "line-width": 5,
-
-                    "line-opacity": 0.9,
-
-                    "line-color": [
-
-                        "case",
-
-                        ["==", ["get", "direction"], "ida"],
-
-                        baseColor,
-
-                        returnColor
-
-                    ]
-
-                }
-
+        }
+        else {
+            map.flyTo({
+                center: toLngLat(destination),
+                zoom: 16
             });
+        }
+    }, [destination, location]);
 
+    useEffect(() => {
+        const map = mapRef.current;
+        const displayedRoutes = plannedGeojsons.length > 0
+            ? plannedGeojsons
+            : geojson
+                ? [geojson]
+                : [];
+
+        if (!map) return undefined;
+
+        const drawRoutes = () => {
+            for (const { sourceId, layerId } of renderedLayersRef.current) {
+                if (map.getLayer(layerId)) map.removeLayer(layerId);
+                if (map.getSource(sourceId)) map.removeSource(sourceId);
+            }
+
+            renderedLayersRef.current = [];
+
+            displayedRoutes.forEach((routeGeojson, index) => {
+                const sourceId = `route-source-${index}`;
+                const layerId = `route-layer-${index}`;
+                const baseColor = getRouteColor(routeGeojson);
+                const returnColor = lightenColor(baseColor, 45);
+
+                map.addSource(sourceId, {
+                    type: "geojson",
+                    data: routeGeojson
+                });
+                map.addLayer({
+                    id: layerId,
+                    type: "line",
+                    source: sourceId,
+                    paint: {
+                        "line-width": plannedGeojsons.length > 0 ? 6 : 5,
+                        "line-opacity": 0.9,
+                        "line-color": [
+                            "case",
+                            ["==", ["get", "direction"], "regreso"],
+                            returnColor,
+                            baseColor
+                        ]
+                    }
+                });
+                renderedLayersRef.current.push({ sourceId, layerId });
+            });
         };
 
-        if (map.isStyleLoaded())
+        if (map.isStyleLoaded()) {
+            drawRoutes();
+        }
+        else {
+            map.once("load", drawRoutes);
+        }
 
-            draw();
+        return () => map.off("load", drawRoutes);
+    }, [geojson, plannedGeojsons]);
 
-        else
+    useEffect(() => {
+        const map = mapRef.current;
 
-            map.once("load", draw);
+        for (const marker of planMarkersRef.current) marker.remove();
+        planMarkersRef.current = [];
 
-    }, [geojson]);
+        if (!map || !plan?.bestOption) return;
+
+        const points = [
+            {
+                location: plan.bestOption.boardingPoint,
+                color: "#16A34A",
+                label: "Punto de abordaje aproximado"
+            },
+            {
+                location: plan.bestOption.dropoffPoint,
+                color: "#EA580C",
+                label: "Punto de descenso aproximado"
+            }
+        ];
+
+        if (plan.bestOption.transferFromPoint) {
+            points.push({
+                location: plan.bestOption.transferFromPoint,
+                color: "#7C3AED",
+                label: "Punto de transbordo aproximado"
+            });
+        }
+
+        for (const item of points) {
+            const marker = new maplibregl.Marker({
+                color: item.color,
+                scale: 0.8
+            })
+                .setLngLat(toLngLat(item.location))
+                .setPopup(new maplibregl.Popup().setText(item.label))
+                .addTo(map);
+
+            planMarkersRef.current.push(marker);
+        }
+    }, [plan]);
 
     return (
-
         <div
-
             ref={mapContainer}
-
             style={{
-
                 width: "100%",
-
                 height: "100%"
-
             }}
-
         />
-
     );
-
 }
