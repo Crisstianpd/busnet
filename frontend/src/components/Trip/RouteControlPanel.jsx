@@ -1,3 +1,4 @@
+import { useState } from "react";
 import "./RouteControlPanel.css";
 
 function LocationIcon({ type }) {
@@ -47,6 +48,32 @@ export default function RouteControlPanel({
 }) {
     const canCalculate = Boolean(origin && destination) && !planning;
     const showStartTripAction = false;
+    const [collapsed, setCollapsed] = useState(false);
+
+    if (collapsed && routeCalculated) {
+        return (
+            <section
+                className="route-control-panel is-collapsed"
+                aria-label="Planificador de viaje comprimido"
+            >
+                <button
+                    type="button"
+                    className="route-control-expand"
+                    onClick={() => setCollapsed(false)}
+                    aria-expanded="false"
+                    title="Mostrar panel de viaje"
+                >
+                    <span className="route-control-expand-icon" aria-hidden="true">
+                        ›
+                    </span>
+                    <span>
+                        <small>BUSNET</small>
+                        Ver viaje
+                    </span>
+                </button>
+            </section>
+        );
+    }
 
     return (
         <section className="route-control-panel" aria-label="Planificador de viaje">
@@ -55,7 +82,21 @@ export default function RouteControlPanel({
                     <span className="route-control-eyebrow">Movilidad inteligente</span>
                     <h1>BUSNET</h1>
                 </div>
-                <span className="route-control-badge">El Salvador</span>
+                <div className="route-control-brand-actions">
+                    {routeCalculated && (
+                        <button
+                            type="button"
+                            className="route-control-collapse"
+                            onClick={() => setCollapsed(true)}
+                            aria-expanded="true"
+                            title="Comprimir panel para ver el mapa"
+                        >
+                            <span aria-hidden="true">‹</span>
+                            Comprimir
+                        </button>
+                    )}
+                    <span className="route-control-badge">El Salvador</span>
+                </div>
             </header>
 
             <div className="route-control-utilities">
@@ -201,7 +242,10 @@ export default function RouteControlPanel({
             <button
                 type="button"
                 className="route-control-primary"
-                onClick={onCalculateRoute}
+                onClick={() => {
+                    setCollapsed(false);
+                    onCalculateRoute();
+                }}
                 disabled={!canCalculate}
             >
                 {planning ? (
@@ -229,7 +273,10 @@ export default function RouteControlPanel({
                     <button
                         type="button"
                         className="route-control-ghost"
-                        onClick={onCancelTrip}
+                        onClick={() => {
+                            setCollapsed(false);
+                            onCancelTrip();
+                        }}
                     >
                         Limpiar viaje
                     </button>

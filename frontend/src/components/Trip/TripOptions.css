@@ -1,15 +1,15 @@
 .trip-options-list {
     display: grid;
-    gap: 9px;
-    max-height: 49vh;
+    gap: 7px;
+    max-height: 42vh;
     overflow-y: auto;
-    padding: 10px 8px;
+    padding: 8px 5px;
 }
 
 .trip-option-card {
     overflow: hidden;
     border: 1px solid var(--ui-border, #dce6f0);
-    border-radius: 16px;
+    border-radius: 13px;
     background: var(--ui-surface, #fff);
     color: var(--ui-text, #16243a);
     box-shadow: 0 5px 16px rgba(27, 61, 94, 0.06);
@@ -30,11 +30,11 @@
 .trip-option-summary {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
-    gap: 9px;
+    gap: 7px;
     width: 100%;
     align-items: center;
     border: 0;
-    padding: 12px;
+    padding: 10px;
     background: transparent;
     color: inherit;
     text-align: left;
@@ -43,8 +43,8 @@
 
 .trip-option-route-mark {
     display: grid;
-    width: 31px;
-    height: 31px;
+    width: 28px;
+    height: 28px;
     place-items: center;
     border-radius: 10px;
     background: #eaf6ff;
@@ -94,7 +94,7 @@
 
 .trip-option-details {
     border-top: 1px solid var(--ui-border, #dce6f0);
-    padding: 12px;
+    padding: 10px;
     animation: trip-details-in 180ms ease-out;
 }
 

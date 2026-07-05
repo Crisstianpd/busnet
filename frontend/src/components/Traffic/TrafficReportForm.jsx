@@ -1,15 +1,5 @@
 import { useState } from "react";
 
-const fieldStyle = {
-    width: "100%",
-    boxSizing: "border-box",
-    border: "1px solid #DCE6F0",
-    borderRadius: 10,
-    padding: "9px 10px",
-    background: "#F7FAFC",
-    color: "#16243A"
-};
-
 export default function TrafficReportForm({
     currentLocation,
     selectedLocation,
@@ -52,19 +42,13 @@ export default function TrafficReportForm({
     return (
         <form
             onSubmit={handleSubmit}
-            style={{
-                display: "grid",
-                gap: 10,
-                paddingTop: 12,
-                borderTop: "1px solid rgba(148, 163, 184, 0.2)"
-            }}
+            className="community-report-form"
         >
-            <label style={{ display: "grid", gap: 5, fontSize: 12 }}>
+            <label>
                 Tipo de incidente
                 <select
                     value={type}
                     onChange={event => setType(event.target.value)}
-                    style={fieldStyle}
                 >
                     <option value="traffic">Tráfico</option>
                     <option value="accident">Accidente</option>
@@ -76,12 +60,11 @@ export default function TrafficReportForm({
                 </select>
             </label>
 
-            <label style={{ display: "grid", gap: 5, fontSize: 12 }}>
+            <label>
                 Severidad
                 <select
                     value={severity}
                     onChange={event => setSeverity(event.target.value)}
-                    style={fieldStyle}
                 >
                     <option value="low">Baja</option>
                     <option value="medium">Media</option>
@@ -89,7 +72,7 @@ export default function TrafficReportForm({
                 </select>
             </label>
 
-            <label style={{ display: "grid", gap: 5, fontSize: 12 }}>
+            <label>
                 Descripción breve
                 <textarea
                     value={description}
@@ -97,18 +80,16 @@ export default function TrafficReportForm({
                     maxLength={200}
                     rows={3}
                     placeholder="¿Qué está ocurriendo?"
-                    style={{ ...fieldStyle, resize: "vertical" }}
                 />
             </label>
 
-            <label style={{ display: "grid", gap: 5, fontSize: 12 }}>
+            <label>
                 Zona aproximada
                 <select
                     value={radiusMeters}
                     onChange={event =>
                         setRadiusMeters(Number(event.target.value))
                     }
-                    style={fieldStyle}
                 >
                     <option value={100}>100 metros</option>
                     <option value={150}>150 metros</option>
@@ -117,16 +98,11 @@ export default function TrafficReportForm({
                 </select>
             </label>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="community-report-actions">
                 <button
                     type="button"
                     disabled={!currentLocation}
                     onClick={onUseCurrentLocation}
-                    style={{
-                        ...fieldStyle,
-                        cursor: currentLocation ? "pointer" : "not-allowed",
-                        opacity: currentLocation ? 1 : 0.55
-                    }}
                 >
                     Usar mi ubicación
                 </button>
@@ -134,42 +110,26 @@ export default function TrafficReportForm({
                 <button
                     type="button"
                     onClick={onSelectOnMap}
-                    style={{
-                        ...fieldStyle,
-                        cursor: "pointer",
-                        borderColor: selectingOnMap
-                            ? "#F59E0B"
-                            : fieldStyle.border.split(" ").at(-1)
-                    }}
+                    className={selectingOnMap ? "is-selecting" : ""}
                 >
                     {selectingOnMap ? "Haz clic en el mapa" : "Elegir en mapa"}
                 </button>
             </div>
 
             <div
-                style={{
-                    borderRadius: 9,
-                    padding: "8px 10px",
-                    background: location
-                        ? "rgba(34, 197, 94, 0.12)"
-                        : "rgba(245, 158, 11, 0.12)",
-                    color: location ? "#BBF7D0" : "#FDE68A",
-                    fontSize: 12
-                }}
+                className={`community-report-location ${
+                    location ? "is-ready" : "is-pending"
+                }`}
             >
                 {location
                     ? `Ubicación lista: ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
                     : "Selecciona dónde ocurre el incidente."}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div className="community-report-actions">
                 <button
                     type="button"
                     onClick={onCancel}
-                    style={{
-                        ...fieldStyle,
-                        cursor: "pointer"
-                    }}
                 >
                     Cancelar
                 </button>
@@ -180,19 +140,7 @@ export default function TrafficReportForm({
                         !location ||
                         description.trim().length < 3
                     }
-                    style={{
-                        border: 0,
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        background: "#F97316",
-                        color: "#111827",
-                        fontWeight: 800,
-                        cursor: submitting ? "wait" : "pointer",
-                        opacity:
-                            !location || description.trim().length < 3
-                                ? 0.55
-                                : 1
-                    }}
+                    className="is-submit"
                 >
                     {submitting ? "Guardando…" : "Publicar reporte"}
                 </button>

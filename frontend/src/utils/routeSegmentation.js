@@ -109,7 +109,7 @@ function renderFeature(
             routeColor: metadata.color,
             segmentType,
             renderColor: directionColor(metadata.color, direction),
-            renderOpacity: used ? 1 : 0.5,
+            renderOpacity: used ? 1 : 0.3,
             renderWidth: used ? 6 : 4
         }
     };

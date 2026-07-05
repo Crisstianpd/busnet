@@ -1,5 +1,5 @@
 :root {
-    --ui-panel: rgba(255, 255, 255, 0.97);
+    --ui-panel: rgba(255, 255, 255, 0.78);
     --ui-surface: #ffffff;
     --ui-surface-soft: #f7fafc;
     --ui-text: #16243a;
@@ -9,7 +9,7 @@
 }
 
 [data-theme="dark"] {
-    --ui-panel: rgba(15, 24, 38, 0.97);
+    --ui-panel: rgba(15, 24, 38, 0.72);
     --ui-surface: #162235;
     --ui-surface-soft: #1d2b40;
     --ui-text: #eef6ff;
@@ -87,10 +87,12 @@
 [data-theme="dark"] .route-control-panel,
 [data-theme="dark"] .community-panel,
 [data-theme="dark"] .community-dock {
-    border-color: var(--ui-border);
+    border-color: rgba(255, 255, 255, 0.1);
     background: var(--ui-panel);
     color: var(--ui-text);
-    box-shadow: 0 22px 55px var(--ui-shadow);
+    box-shadow: 0 16px 38px var(--ui-shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 [data-theme="dark"] .route-control-brand h1,
@@ -165,6 +167,17 @@
     color: #8fd3ff;
 }
 
+[data-theme="dark"] .route-control-collapse,
+[data-theme="dark"] .route-control-expand {
+    border-color: #355b7a;
+    background: rgba(24, 54, 80, 0.86);
+    color: #9bd7ff;
+}
+
+[data-theme="dark"] .route-control-expand small {
+    color: var(--ui-muted);
+}
+
 [data-theme="dark"] .trip-option-card {
     border-color: var(--ui-border);
     background: var(--ui-surface);
@@ -205,6 +218,19 @@
     border-color: var(--ui-border) !important;
     background: var(--ui-surface-soft) !important;
     color: var(--ui-text) !important;
+}
+
+[data-theme="dark"] .community-report-location.is-ready {
+    color: #9ce8b6;
+}
+
+[data-theme="dark"] .community-report-location.is-pending {
+    color: #fbd58b;
+}
+
+[data-theme="dark"] .community-report-form button.is-submit {
+    background: #f97316 !important;
+    color: #111827 !important;
 }
 
 [data-theme="dark"] .maplibregl-popup-content {

@@ -119,7 +119,11 @@ function runTripPlaceholder({ origin, destination }) {
     console.log("🏁 Destino:", destination);
 }
 
+const normalizationStartedAt = performance.now();
 const normalizedRoutes = normalizeRoutes(routes);
+const normalizationDurationMilliseconds = Number(
+    (performance.now() - normalizationStartedAt).toFixed(2)
+);
 const normalizedRoutesById = new Map(
     normalizedRoutes.map(route => [
         route.route.toLowerCase(),
@@ -220,6 +224,11 @@ app.post("/plan", (req, res) => {
         routes: normalizedRoutes,
         options: validatedRequest.options
     });
+
+    if (result.search?.performance) {
+        result.search.performance.normalizationStartupMilliseconds =
+            normalizationDurationMilliseconds;
+    }
 
     if (!result.bestOption) {
         return res.status(404).json({

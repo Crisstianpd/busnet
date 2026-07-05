@@ -24,13 +24,15 @@ function toLocation(feature) {
     return { latitude, longitude };
 }
 
+function directionRank(confidence) {
+    return {
+        high: 0,
+        medium: 1,
+        low: 2
+    }[confidence] ?? 2;
+}
+
 function compareOptions(left, right, config) {
-    const preferredDirect = option =>
-        option.type === "direct" &&
-        option.boardingDistanceMeters <=
-            config.preferredWalkToRouteMeters &&
-        option.destinationDistanceMeters <=
-            config.preferredWalkToRouteMeters;
     const accessPenalty = option =>
         (
             option.boardingDistanceMeters >
@@ -45,8 +47,8 @@ function compareOptions(left, right, config) {
         );
 
     return (
-        Number(preferredDirect(right)) -
-            Number(preferredDirect(left)) ||
+        directionRank(left.directionConfidence) -
+            directionRank(right.directionConfidence) ||
         (
             left.walkingDistanceMeters + accessPenalty(left)
         ) - (
@@ -54,8 +56,8 @@ function compareOptions(left, right, config) {
         ) ||
         left.routes.length - right.routes.length ||
         left.transferCount - right.transferCount ||
-        left.radiusUsedMeters - right.radiusUsedMeters ||
         left.estimatedDistanceMeters - right.estimatedDistanceMeters ||
+        left.radiusUsedMeters - right.radiusUsedMeters ||
         left.routes.join("-").localeCompare(right.routes.join("-"))
     );
 }
@@ -112,12 +114,19 @@ function nearestRoutePoint(searchPoint, route) {
     return nearest;
 }
 
-export function findNearbyRoutes(searchPoint, routes, config) {
+export function findNearbyRoutes(
+    searchPoint,
+    routes,
+    config,
+    maximumCandidates = routes.length
+) {
     const measuredRoutes = routes
         .map(route => {
             const nearest = nearestRoutePoint(searchPoint, route);
 
-            return nearest ? { ...route, ...nearest } : null;
+            return nearest
+                ? { ...route, ...nearest, searchPoint }
+                : null;
         })
         .filter(Boolean)
         .filter(route => route.distanceMeters <= config.maximumRadiusMeters)
@@ -137,7 +146,7 @@ export function findNearbyRoutes(searchPoint, routes, config) {
         radiusMeters,
         candidates: measuredRoutes.filter(
             route => route.distanceMeters <= radiusMeters
-        )
+        ).slice(0, maximumCandidates)
     };
 }
 
@@ -259,17 +268,23 @@ function minimumBoundsDistanceMeters(firstBounds, secondBounds) {
     return Math.hypot(longitudeGap, latitudeGap);
 }
 
-function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
+function findTransfers(
+    routeFrom,
+    routeTo,
+    maximumWalkMeters,
+    maximumCandidates
+) {
     if (
         minimumBoundsDistanceMeters(
             getRouteBounds(routeFrom),
             getRouteBounds(routeTo)
         ) > maximumWalkMeters
     ) {
-        return null;
+        return [];
     }
 
-    let bestTransfer = null;
+    const candidates = [];
+    const seen = new Set();
 
     for (const fromConnectionLine of getConnectionLines(routeFrom)) {
         for (const toConnectionLine of getConnectionLines(routeTo)) {
@@ -282,19 +297,30 @@ function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
                 );
 
                 for (const intersection of intersections.features) {
-                    if (!bestTransfer || bestTransfer.distanceMeters > 0) {
-                        bestTransfer = {
-                            connectionType: "intersection",
-                            distanceMeters: 0,
-                            firstPoint: intersection,
-                            secondPoint: intersection,
-                            fromLine: fromConnectionLine.source,
-                            toLine: toConnectionLine.source
-                        };
-                    }
+                    const [longitude, latitude] =
+                        intersection.geometry.coordinates;
+                    const key = [
+                        fromConnectionLine.source.featureIndex,
+                        fromConnectionLine.source.multiFeatureIndex,
+                        toConnectionLine.source.featureIndex,
+                        toConnectionLine.source.multiFeatureIndex,
+                        longitude.toFixed(6),
+                        latitude.toFixed(6)
+                    ].join(":");
+
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    candidates.push({
+                        connectionType: "intersection",
+                        distanceMeters: 0,
+                        firstPoint: intersection,
+                        secondPoint: intersection,
+                        fromLine: fromConnectionLine.source,
+                        toLine: toConnectionLine.source
+                    });
                 }
 
-                if (bestTransfer?.distanceMeters === 0) continue;
+                if (intersections.features.length > 0) continue;
 
                 const candidate = findClosestPointsBetweenLines(
                     fromLine,
@@ -303,13 +329,9 @@ function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
 
                 if (
                     candidate &&
-                    candidate.distanceMeters <= maximumWalkMeters &&
-                    (
-                        !bestTransfer ||
-                        candidate.distanceMeters < bestTransfer.distanceMeters
-                    )
+                    candidate.distanceMeters <= maximumWalkMeters
                 ) {
-                    bestTransfer = {
+                    candidates.push({
                         ...candidate,
                         connectionType:
                             candidate.distanceMeters <= 1
@@ -317,7 +339,7 @@ function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
                                 : "proximity",
                         fromLine: fromConnectionLine.source,
                         toLine: toConnectionLine.source
-                    };
+                    });
                 }
             }
             catch {
@@ -326,10 +348,32 @@ function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
         }
     }
 
-    return bestTransfer &&
-        bestTransfer.distanceMeters <= maximumWalkMeters
-        ? bestTransfer
-        : null;
+    const selectedCandidates = [];
+    const candidatesPerDirectionPair = new Map();
+
+    for (const candidate of candidates.sort(
+        (left, right) =>
+            left.distanceMeters - right.distanceMeters
+    )) {
+        const directionPair = [
+            candidate.fromLine.direction,
+            candidate.toLine.direction
+        ].join(">");
+        const selectedForPair =
+            candidatesPerDirectionPair.get(directionPair) ?? 0;
+
+        if (selectedForPair >= 1) continue;
+
+        candidatesPerDirectionPair.set(
+            directionPair,
+            selectedForPair + 1
+        );
+        selectedCandidates.push(candidate);
+
+        if (selectedCandidates.length >= maximumCandidates) break;
+    }
+
+    return selectedCandidates;
 }
 
 function reverseTransfer(transfer) {
@@ -347,7 +391,9 @@ function getTransferCache(routes, config) {
 
     if (
         cached &&
-        cached.maximumWalkMeters === config.maximumTransferWalkMeters
+        cached.maximumWalkMeters === config.maximumTransferWalkMeters &&
+        cached.maximumCandidates ===
+            config.maximumTransferCandidatesPerPair
     ) {
         return cached.transfers;
     }
@@ -356,31 +402,221 @@ function getTransferCache(routes, config) {
 
     networkCache.set(routes, {
         maximumWalkMeters: config.maximumTransferWalkMeters,
+        maximumCandidates:
+            config.maximumTransferCandidatesPerPair,
         transfers
     });
 
     return transfers;
 }
 
-function findCachedTransfer(routeFrom, routeTo, routes, config) {
+function findCachedTransfers(routeFrom, routeTo, routes, config) {
     const cache = getTransferCache(routes, config);
     const key = `${routeFrom.route}>${routeTo.route}`;
 
     if (cache.has(key)) return cache.get(key);
 
-    const transfer = findTransfer(
+    const routeTransfers = findTransfers(
         routeFrom,
         routeTo,
-        config.maximumTransferWalkMeters
+        config.maximumTransferWalkMeters,
+        config.maximumTransferCandidatesPerPair
     );
 
-    cache.set(key, transfer);
+    cache.set(key, routeTransfers);
     cache.set(
         `${routeTo.route}>${routeFrom.route}`,
-        transfer ? reverseTransfer(transfer) : null
+        routeTransfers.map(reverseTransfer)
     );
 
-    return transfer;
+    return routeTransfers;
+}
+
+function analyzeLineDirection(line, fromPoint, toPoint) {
+    if (!line?.feature || !fromPoint || !toPoint) {
+        return {
+            line,
+            direction: line?.direction ?? "estimado",
+            directionValid: false,
+            directionConfidence: "low",
+            directionWarnings: [
+                "No fue posible validar el orden del recorrido."
+            ],
+            fromDistanceAlongLineMeters: null,
+            toDistanceAlongLineMeters: null,
+            fromProjectionDistanceMeters: null,
+            toProjectionDistanceMeters: null
+        };
+    }
+
+    try {
+        const snappedFrom = nearestPointOnLine(
+            line.feature,
+            fromPoint,
+            { units: "kilometers" }
+        );
+        const snappedTo = nearestPointOnLine(
+            line.feature,
+            toPoint,
+            { units: "kilometers" }
+        );
+        const fromDistanceAlongLineMeters = roundMeters(
+            (snappedFrom.properties.location ?? 0) * 1000
+        );
+        const toDistanceAlongLineMeters = roundMeters(
+            (snappedTo.properties.location ?? 0) * 1000
+        );
+        const directionValid =
+            toDistanceAlongLineMeters >
+            fromDistanceAlongLineMeters + 1;
+        const estimatedDirection = line.direction === "estimado";
+        const directionConfidence = directionValid
+            ? estimatedDirection ? "medium" : "high"
+            : "low";
+        const directionWarnings = [];
+        const fromProjectionDistanceMeters = roundMeters(distance(
+            fromPoint,
+            snappedFrom,
+            { units: "meters" }
+        ));
+        const toProjectionDistanceMeters = roundMeters(distance(
+            toPoint,
+            snappedTo,
+            { units: "meters" }
+        ));
+
+        if (!directionValid) {
+            directionWarnings.push(
+                `El recorrido proyectado avanza en orden inverso sobre el sentido ${line.direction}.`
+            );
+        }
+        else if (estimatedDirection) {
+            directionWarnings.push(
+                "El GeoJSON no declara ida o regreso; el sentido fue estimado por el orden de sus coordenadas."
+            );
+        }
+
+        return {
+            line,
+            direction: line.direction ?? "estimado",
+            directionValid,
+            directionConfidence,
+            directionWarnings,
+            fromDistanceAlongLineMeters,
+            toDistanceAlongLineMeters,
+            fromProjectionDistanceMeters,
+            toProjectionDistanceMeters,
+            snappedFrom,
+            snappedTo
+        };
+    }
+    catch {
+        return {
+            line,
+            direction: line.direction ?? "estimado",
+            directionValid: false,
+            directionConfidence: "low",
+            directionWarnings: [
+                "No fue posible proyectar los puntos sobre la geometría de la ruta."
+            ],
+            fromDistanceAlongLineMeters: null,
+            toDistanceAlongLineMeters: null,
+            fromProjectionDistanceMeters: null,
+            toProjectionDistanceMeters: null
+        };
+    }
+}
+
+function selectBestLineForLeg(
+    route,
+    fromPoint,
+    toPoint,
+    maximumFromProjectionMeters,
+    maximumToProjectionMeters
+) {
+    const analyses = route.lines
+        .map(line => analyzeLineDirection(
+            line,
+            fromPoint,
+            toPoint
+        ));
+    const viableAnalyses = analyses.filter(analysis =>
+        analysis.fromProjectionDistanceMeters <=
+            maximumFromProjectionMeters &&
+        analysis.toProjectionDistanceMeters <=
+            maximumToProjectionMeters
+    );
+
+    return (viableAnalyses.length > 0 ? viableAnalyses : analyses)
+        .sort((left, right) =>
+            directionRank(left.directionConfidence) -
+                directionRank(right.directionConfidence) ||
+            (
+                left.fromProjectionDistanceMeters +
+                left.toProjectionDistanceMeters
+            ) - (
+                right.fromProjectionDistanceMeters +
+                right.toProjectionDistanceMeters
+            ) ||
+            (
+                left.toDistanceAlongLineMeters -
+                left.fromDistanceAlongLineMeters
+            ) - (
+                right.toDistanceAlongLineMeters -
+                right.fromDistanceAlongLineMeters
+            )
+        )[0];
+}
+
+function summarizeDirection(analyses) {
+    const directionConfidence = analyses.reduce(
+        (worst, analysis) =>
+            directionRank(analysis.directionConfidence) >
+            directionRank(worst)
+                ? analysis.directionConfidence
+                : worst,
+        "high"
+    );
+    const directionWarnings = [
+        ...new Set(
+            analyses.flatMap(
+                analysis => analysis.directionWarnings ?? []
+            )
+        )
+    ];
+
+    return { directionConfidence, directionWarnings };
+}
+
+function measureCandidateOnLine(candidate, line, config) {
+    try {
+        const snappedPoint = nearestPointOnLine(
+            line.feature,
+            candidate.searchPoint,
+            { units: "kilometers" }
+        );
+        const distanceMeters = distance(
+            candidate.searchPoint,
+            snappedPoint,
+            { units: "meters" }
+        );
+
+        if (distanceMeters > config.maximumRadiusMeters) return null;
+
+        return {
+            ...candidate,
+            line,
+            snappedPoint,
+            distanceMeters,
+            requiredRadiusMeters: requiredRadius(
+                distanceMeters,
+                config
+            )
+        };
+    }
+    catch {
+        return null;
+    }
 }
 
 function createWalkOption(walkingDistanceMeters) {
@@ -399,6 +635,8 @@ function createWalkOption(walkingDistanceMeters) {
         radiusUsedMeters: 0,
         boardingPoint: null,
         dropoffPoint: null,
+        directionConfidence: "high",
+        directionWarnings: [],
         estimated: true,
         reason:
             "El destino está cerca. Se recomienda caminar."
@@ -410,18 +648,16 @@ function createDirectOption(originRoute, destinationRoute, config) {
     const destinationDistanceMeters = roundMeters(
         destinationRoute.distanceMeters
     );
-    const busDistanceMeters =
-        originRoute.line === destinationRoute.line
-            ? estimateRouteDistanceMeters(
-                originRoute.snappedPoint,
-                destinationRoute.snappedPoint,
-                originRoute.line
-            )
-            : roundMeters(distance(
-                originRoute.snappedPoint,
-                destinationRoute.snappedPoint,
-                { units: "meters" }
-            ));
+    const directionAnalysis = analyzeLineDirection(
+        originRoute.line,
+        originRoute.snappedPoint,
+        destinationRoute.snappedPoint
+    );
+    const busDistanceMeters = estimateRouteDistanceMeters(
+        originRoute.snappedPoint,
+        destinationRoute.snappedPoint,
+        originRoute.line
+    );
     const walkingDistanceMeters =
         boardingDistanceMeters + destinationDistanceMeters;
 
@@ -439,7 +675,15 @@ function createDirectOption(originRoute, destinationRoute, config) {
             {
                 type: "bus",
                 route: originRoute.route,
-                distanceMeters: busDistanceMeters
+                distanceMeters: busDistanceMeters,
+                direction: directionAnalysis.direction,
+                directionValid: directionAnalysis.directionValid,
+                directionConfidence:
+                    directionAnalysis.directionConfidence,
+                fromDistanceAlongLineMeters:
+                    directionAnalysis.fromDistanceAlongLineMeters,
+                toDistanceAlongLineMeters:
+                    directionAnalysis.toDistanceAlongLineMeters
             },
             { type: "walk", distanceMeters: destinationDistanceMeters }
         ],
@@ -461,6 +705,8 @@ function createDirectOption(originRoute, destinationRoute, config) {
         dropoffPoint: toLocation(destinationRoute.snappedPoint),
         boardingPointLabel: "Punto de abordaje aproximado",
         dropoffPointLabel: "Punto de descenso aproximado",
+        directionConfidence: directionAnalysis.directionConfidence,
+        directionWarnings: directionAnalysis.directionWarnings,
         estimated: true,
         reason:
             boardingDistanceMeters <=
@@ -490,11 +736,12 @@ function createTransferRecord(transfer, fromRoute, toRoute, order) {
     };
 }
 
-function createPathOption(originRoute, destinationRoute, state) {
-    const boardingDistanceMeters = roundMeters(originRoute.distanceMeters);
-    const destinationDistanceMeters = roundMeters(
-        destinationRoute.distanceMeters
-    );
+function createPathOption(
+    originRoute,
+    destinationRoute,
+    state,
+    config
+) {
     const transfers = state.edges.map((edge, index) =>
         createTransferRecord(
             edge.transfer,
@@ -507,31 +754,61 @@ function createPathOption(originRoute, destinationRoute, state) {
         (total, transfer) => total + transfer.walkingDistanceMeters,
         0
     );
+    const busLegDetails = state.routeObjects.map((route, index) => {
+        const startPoint = index === 0
+            ? originRoute.searchPoint
+            : state.edges[index - 1].transfer.secondPoint;
+        const endPoint = index === state.edges.length
+            ? destinationRoute.searchPoint
+            : state.edges[index].transfer.firstPoint;
+        const directionAnalysis = selectBestLineForLeg(
+            route,
+            startPoint,
+            endPoint,
+            index === 0
+                ? config.maximumRadiusMeters
+                : config.maximumTransferWalkMeters,
+            index === state.edges.length
+                ? config.maximumRadiusMeters
+                : config.maximumTransferWalkMeters
+        );
+        const preferredLine = directionAnalysis.line;
+
+        return {
+            route: route.route,
+            distanceMeters: estimateRouteDistanceMeters(
+                directionAnalysis.snappedFrom ?? startPoint,
+                directionAnalysis.snappedTo ?? endPoint,
+                preferredLine
+            ),
+            ...directionAnalysis
+        };
+    });
+    const selectedBoardingPoint =
+        busLegDetails[0]?.snappedFrom ??
+        originRoute.snappedPoint;
+    const selectedDropoffPoint =
+        busLegDetails[busLegDetails.length - 1]?.snappedTo ??
+        destinationRoute.snappedPoint;
+    const boardingDistanceMeters = roundMeters(distance(
+        originRoute.searchPoint,
+        selectedBoardingPoint,
+        { units: "meters" }
+    ));
+    const destinationDistanceMeters = roundMeters(distance(
+        destinationRoute.searchPoint,
+        selectedDropoffPoint,
+        { units: "meters" }
+    ));
     const walkingDistanceMeters =
         boardingDistanceMeters +
         transferWalkDistanceMeters +
         destinationDistanceMeters;
-    const busDistances = state.routeObjects.map((route, index) => {
-        const startPoint = index === 0
-            ? originRoute.snappedPoint
-            : state.edges[index - 1].transfer.secondPoint;
-        const endPoint = index === state.edges.length
-            ? destinationRoute.snappedPoint
-            : state.edges[index].transfer.firstPoint;
-        const preferredLine = index === 0
-            ? state.edges[0]?.transfer.fromLine
-            : state.edges[index - 1]?.transfer.toLine;
-
-        return estimateRouteDistanceMeters(
-            startPoint,
-            endPoint,
-            preferredLine
-        );
-    });
-    const estimatedBusDistanceMeters = busDistances.reduce(
-        (total, value) => total + value,
+    const estimatedBusDistanceMeters = busLegDetails.reduce(
+        (total, leg) => total + leg.distanceMeters,
         0
     );
+    const directionSummary = summarizeDirection(busLegDetails);
     const legs = [
         { type: "walk", distanceMeters: boardingDistanceMeters }
     ];
@@ -540,7 +817,15 @@ function createPathOption(originRoute, destinationRoute, state) {
         legs.push({
             type: "bus",
             route: route.route,
-            distanceMeters: busDistances[index]
+            distanceMeters: busLegDetails[index].distanceMeters,
+            direction: busLegDetails[index].direction,
+            directionValid: busLegDetails[index].directionValid,
+            directionConfidence:
+                busLegDetails[index].directionConfidence,
+            fromDistanceAlongLineMeters:
+                busLegDetails[index].fromDistanceAlongLineMeters,
+            toDistanceAlongLineMeters:
+                busLegDetails[index].toDistanceAlongLineMeters
         });
 
         if (transfers[index]) {
@@ -574,19 +859,27 @@ function createPathOption(originRoute, destinationRoute, state) {
         boardingDistanceMeters,
         destinationDistanceMeters,
         transferWalkDistanceMeters,
-        originRadiusMeters: originRoute.requiredRadiusMeters,
-        destinationRadiusMeters: destinationRoute.requiredRadiusMeters,
-        radiusUsedMeters: Math.max(
-            originRoute.requiredRadiusMeters,
-            destinationRoute.requiredRadiusMeters
+        originRadiusMeters: requiredRadius(
+            boardingDistanceMeters,
+            config
         ),
-        boardingPoint: toLocation(originRoute.snappedPoint),
-        dropoffPoint: toLocation(destinationRoute.snappedPoint),
+        destinationRadiusMeters: requiredRadius(
+            destinationDistanceMeters,
+            config
+        ),
+        radiusUsedMeters: Math.max(
+            requiredRadius(boardingDistanceMeters, config),
+            requiredRadius(destinationDistanceMeters, config)
+        ),
+        boardingPoint: toLocation(selectedBoardingPoint),
+        dropoffPoint: toLocation(selectedDropoffPoint),
         transferFromPoint: transfers[0]?.fromPoint,
         transferToPoint: transfers[0]?.toPoint,
         boardingPointLabel: "Punto de abordaje aproximado",
         dropoffPointLabel: "Punto de descenso aproximado",
         transferPointLabel: "Punto de transbordo aproximado",
+        directionConfidence: directionSummary.directionConfidence,
+        directionWarnings: directionSummary.directionWarnings,
         estimated: true,
         reason:
             transfers.length === 1
@@ -606,11 +899,34 @@ function findDirectOptions(
 
     return originCandidates
         .filter(route => destinationByRoute.has(route.route))
-        .map(route => createDirectOption(
-            route,
-            destinationByRoute.get(route.route),
-            config
-        ));
+        .flatMap(route => {
+            const destinationRoute = destinationByRoute.get(
+                route.route
+            );
+
+            return route.lines
+                .map(line => {
+                    const measuredOrigin = measureCandidateOnLine(
+                        route,
+                        line,
+                        config
+                    );
+                    const measuredDestination = measureCandidateOnLine(
+                        destinationRoute,
+                        line,
+                        config
+                    );
+
+                    return measuredOrigin && measuredDestination
+                        ? createDirectOption(
+                            measuredOrigin,
+                            measuredDestination,
+                            config
+                        )
+                        : null;
+                })
+                .filter(Boolean);
+        });
 }
 
 function findConnectedOptions(
@@ -622,103 +938,147 @@ function findConnectedOptions(
     if (config.maximumTransfers < 1) return [];
 
     const routeById = new Map(routes.map(route => [route.route, route]));
-    const destinationByRoute = new Map(
-        destinationCandidates.map(route => [route.route, route])
-    );
     const options = [];
-    const maximumBuses = Math.min(
-        config.maximumBuses,
-        config.maximumTransfers + 1
-    );
     let searchedStates = 0;
 
     for (const originCandidate of originCandidates) {
         const originRoute = routeById.get(originCandidate.route);
-        const queue = [{
-            routeObjects: [originRoute],
-            edges: [],
-            visited: new Set([originRoute.route])
-        }];
 
-        while (
-            queue.length > 0 &&
-            searchedStates < config.maximumSearchStates
-        ) {
-            const state = queue.shift();
-            const currentRoute =
-                state.routeObjects[state.routeObjects.length - 1];
-            const destinationCandidate = destinationByRoute.get(
-                currentRoute.route
+        for (const destinationCandidate of destinationCandidates) {
+            if (originCandidate.route === destinationCandidate.route) {
+                continue;
+            }
+            if (searchedStates >= config.maximumSearchStates) {
+                return options;
+            }
+
+            searchedStates += 1;
+            if (config.performanceMeasurements) {
+                config.performanceMeasurements.searchedStates =
+                    searchedStates;
+            }
+            const destinationRoute = routeById.get(
+                destinationCandidate.route
+            );
+            const transfers = findCachedTransfers(
+                originRoute,
+                destinationRoute,
+                routes,
+                config
             );
 
-            if (
-                state.edges.length > 0 &&
-                destinationCandidate
-            ) {
+            for (const transfer of transfers) {
                 options.push(createPathOption(
                     originCandidate,
                     destinationCandidate,
-                    state
+                    {
+                        routeObjects: [
+                            originRoute,
+                            destinationRoute
+                        ],
+                        edges: [{ route: destinationRoute, transfer }]
+                    },
+                    config
                 ));
-                continue;
+                if (
+                    options.length >=
+                    config.maximumGeneratedOptions
+                ) return options;
+            }
+        }
+    }
+
+    if (config.maximumTransfers < 2) return options;
+
+    for (const destinationCandidate of destinationCandidates) {
+        const destinationRoute = routeById.get(
+            destinationCandidate.route
+        );
+
+        for (const intermediateRoute of routes) {
+            if (
+                intermediateRoute.route ===
+                destinationCandidate.route
+            ) continue;
+            if (searchedStates >= config.maximumSearchStates) {
+                return options;
             }
 
-            if (state.routeObjects.length >= maximumBuses) continue;
+            searchedStates += 1;
+            if (config.performanceMeasurements) {
+                config.performanceMeasurements.searchedStates =
+                    searchedStates;
+            }
+            const secondTransfers = findCachedTransfers(
+                intermediateRoute,
+                destinationRoute,
+                routes,
+                config
+            );
 
-            const isFinalBus =
-                state.routeObjects.length === maximumBuses - 1;
-            const nextRoutes = isFinalBus
-                ? destinationCandidates
-                    .map(candidate => routeById.get(candidate.route))
-                    .filter(Boolean)
-                : routes;
+            if (secondTransfers.length === 0) continue;
 
-            for (const nextRoute of nextRoutes) {
-                if (state.visited.has(nextRoute.route)) continue;
-                if (searchedStates >= config.maximumSearchStates) break;
+            for (const originCandidate of originCandidates) {
+                if (
+                    originCandidate.route ===
+                        destinationCandidate.route ||
+                    originCandidate.route === intermediateRoute.route
+                ) {
+                    continue;
+                }
+                if (searchedStates >= config.maximumSearchStates) {
+                    return options;
+                }
 
                 searchedStates += 1;
-                const transfer = findCachedTransfer(
-                    currentRoute,
-                    nextRoute,
+                if (config.performanceMeasurements) {
+                    config.performanceMeasurements.searchedStates =
+                        searchedStates;
+                }
+                const originRoute = routeById.get(
+                    originCandidate.route
+                );
+                const firstTransfers = findCachedTransfers(
+                    originRoute,
+                    intermediateRoute,
                     routes,
                     config
                 );
 
-                if (!transfer) continue;
+                if (firstTransfers.length === 0) continue;
 
-                const nextState = {
-                    routeObjects: [
-                        ...state.routeObjects,
-                        nextRoute
-                    ],
-                    edges: [
-                        ...state.edges,
-                        { route: nextRoute, transfer }
-                    ],
-                    visited: new Set([
-                        ...state.visited,
-                        nextRoute.route
-                    ])
-                };
-                const nextDestinationCandidate = destinationByRoute.get(
-                    nextRoute.route
-                );
-
-                if (nextDestinationCandidate) {
-                    options.push(createPathOption(
-                        originCandidate,
-                        nextDestinationCandidate,
-                        nextState
-                    ));
-                    continue;
+                for (const firstTransfer of firstTransfers) {
+                    for (const secondTransfer of secondTransfers) {
+                        options.push(createPathOption(
+                            originCandidate,
+                            destinationCandidate,
+                            {
+                                routeObjects: [
+                                    originRoute,
+                                    intermediateRoute,
+                                    destinationRoute
+                                ],
+                                edges: [
+                                    {
+                                        route: intermediateRoute,
+                                        transfer: firstTransfer
+                                    },
+                                    {
+                                        route: destinationRoute,
+                                        transfer: secondTransfer
+                                    }
+                                ]
+                            },
+                            config
+                        ));
+                        if (
+                            options.length >=
+                            config.maximumGeneratedOptions
+                        ) return options;
+                    }
                 }
-
-                queue.push(nextState);
             }
         }
-
-        if (searchedStates >= config.maximumSearchStates) break;
     }
 
     return options;
@@ -730,7 +1090,34 @@ export function planTrip({
     routes,
     options = {}
 }) {
+    const requestStartedAt = performance.now();
     const config = resolveRoutingConfig(options);
+    const performanceMeasurements = {};
+    config.performanceMeasurements = performanceMeasurements;
+    const measure = (name, callback) => {
+        const startedAt = performance.now();
+        const value = callback();
+
+        performanceMeasurements[name] = Number(
+            (performance.now() - startedAt).toFixed(2)
+        );
+        return value;
+    };
+    const finish = result => {
+        performanceMeasurements.totalMilliseconds = Number(
+            (performance.now() - requestStartedAt).toFixed(2)
+        );
+
+        if (config.enablePerformanceLogs) {
+            result.search.performance = performanceMeasurements;
+            console.info(
+                "[Trip Planner performance]",
+                performanceMeasurements
+            );
+        }
+
+        return result;
+    };
     const originPoint = point([origin.longitude, origin.latitude]);
     const destinationPoint = point([
         destination.longitude,
@@ -744,7 +1131,7 @@ export function planTrip({
         directWalkingDistanceMeters <=
         config.walkOnlyThresholdMeters
     ) {
-        return {
+        return finish({
             search: {
                 originRadiusMeters: 0,
                 destinationRadiusMeters: 0,
@@ -752,14 +1139,26 @@ export function planTrip({
             },
             bestOption: createWalkOption(directWalkingDistanceMeters),
             alternatives: []
-        };
+        });
     }
 
-    const originSearch = findNearbyRoutes(originPoint, routes, config);
-    const destinationSearch = findNearbyRoutes(
-        destinationPoint,
-        routes,
-        config
+    const originSearch = measure(
+        "originCandidatesMilliseconds",
+        () => findNearbyRoutes(
+            originPoint,
+            routes,
+            config,
+            config.maximumOriginCandidates
+        )
+    );
+    const destinationSearch = measure(
+        "destinationCandidatesMilliseconds",
+        () => findNearbyRoutes(
+            destinationPoint,
+            routes,
+            config,
+            config.maximumDestinationCandidates
+        )
     );
     const search = {
         originRadiusMeters: originSearch.radiusMeters,
@@ -771,17 +1170,20 @@ export function planTrip({
         originSearch.candidates.length === 0 ||
         destinationSearch.candidates.length === 0
     ) {
-        return {
+        return finish({
             search,
             bestOption: null,
             alternatives: []
-        };
+        });
     }
 
-    const directOptions = findDirectOptions(
-        originSearch.candidates,
-        destinationSearch.candidates,
-        config
+    const directOptions = measure(
+        "directOptionsMilliseconds",
+        () => findDirectOptions(
+            originSearch.candidates,
+            destinationSearch.candidates,
+            config
+        )
     );
     const hasConvenientDirectOption = directOptions.some(
         option =>
@@ -790,22 +1192,31 @@ export function planTrip({
             option.destinationDistanceMeters <=
                 config.preferredWalkToRouteMeters
     );
-    const connectedOptions = hasConvenientDirectOption
-        ? []
-        : findConnectedOptions(
-            originSearch.candidates,
-            destinationSearch.candidates,
-            routes,
+    const connectedOptions = measure(
+        "connectionsMilliseconds",
+        () => hasConvenientDirectOption
+            ? []
+            : findConnectedOptions(
+                originSearch.candidates,
+                destinationSearch.candidates,
+                routes,
+                config
+            )
+    );
+    const rankedOptions = measure(
+        "rankingMilliseconds",
+        () => removeDuplicateOptions([
+            ...directOptions,
+            ...connectedOptions
+        ].sort((left, right) => compareOptions(
+            left,
+            right,
             config
-        );
-    const rankedOptions = removeDuplicateOptions([
-        ...directOptions,
-        ...connectedOptions
-    ].sort((left, right) => compareOptions(left, right, config)))
-        .slice(0, config.maximumAlternatives);
+        ))).slice(0, config.maximumAlternatives)
+    );
     const bestOption = rankedOptions[0] ?? null;
 
-    return {
+    return finish({
         search: bestOption
             ? {
                 ...search,
@@ -815,5 +1226,5 @@ export function planTrip({
             : search,
         bestOption,
         alternatives: rankedOptions.slice(1)
-    };
+    });
 }

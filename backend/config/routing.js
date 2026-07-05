@@ -8,7 +8,12 @@ export const routingConfig = Object.freeze({
     maximumBuses: 3,
     maximumTransfers: 2,
     maximumTransferWalkMeters: 200,
-    maximumSearchStates: 5000
+    maximumTransferCandidatesPerPair: 4,
+    maximumOriginCandidates: 8,
+    maximumDestinationCandidates: 8,
+    maximumGeneratedOptions: 64,
+    maximumSearchStates: 5000,
+    enablePerformanceLogs: false
 });
 
 export function resolveRoutingConfig(options = {}) {
@@ -33,6 +38,8 @@ export function resolveRoutingConfig(options = {}) {
                     routingConfig.maximumTransfers,
                     routingConfig.maximumBuses - 1
                 )
-                : routingConfig.maximumTransfers
+                : routingConfig.maximumTransfers,
+        enablePerformanceLogs:
+            options.enablePerformanceLogs === true
     };
 }

@@ -6,7 +6,10 @@ import {
     featureCollection,
     lineString
 } from "@turf/turf";
-import { resolveRoutingConfig } from "../config/routing.js";
+import {
+    resolveRoutingConfig,
+    routingConfig
+} from "../config/routing.js";
 import { normalizeRoutes } from "../services/geojsonNormalizer.js";
 import { planTrip } from "../services/routePlanner.js";
 
@@ -77,6 +80,87 @@ test("encuentra una ruta directa dentro del radio inicial", () => {
     assert.deepEqual(result.bestOption.routes, ["A"]);
     assert.equal(result.search.originRadiusMeters, 100);
     assert.equal(result.search.destinationRadiusMeters, 100);
+});
+
+test("elige ida o regreso según el orden del recorrido", () => {
+    const geojson = featureCollection([
+        lineString([
+            [-89.21, 13.7],
+            [-89.19, 13.7]
+        ], { direction: "ida" }),
+        lineString([
+            [-89.19, 13.7],
+            [-89.21, 13.7]
+        ], { direction: "regreso" })
+    ]);
+    const routes = normalizeRoutes([{
+        route: "D",
+        name: "Ruta con sentidos",
+        color: "#1E88E5",
+        geojson
+    }]);
+    const outbound = planTrip({
+        origin: { latitude: 13.7, longitude: -89.21 },
+        destination: { latitude: 13.7, longitude: -89.19 },
+        routes
+    });
+    const inbound = planTrip({
+        origin: { latitude: 13.7, longitude: -89.19 },
+        destination: { latitude: 13.7, longitude: -89.21 },
+        routes
+    });
+
+    assert.equal(outbound.bestOption.legs[1].direction, "ida");
+    assert.equal(outbound.bestOption.legs[1].directionValid, true);
+    assert.equal(outbound.bestOption.directionConfidence, "high");
+    assert.equal(inbound.bestOption.legs[1].direction, "regreso");
+    assert.equal(inbound.bestOption.legs[1].directionValid, true);
+    assert.equal(inbound.bestOption.directionConfidence, "high");
+});
+
+test("mantiene como estimada una ruta sin metadata de sentido", () => {
+    const routes = normalizeRoutes([
+        createRoute("E", [
+            [-89.21, 13.7],
+            [-89.19, 13.7]
+        ])
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7, longitude: -89.21 },
+        destination: { latitude: 13.7, longitude: -89.19 },
+        routes
+    });
+
+    assert.equal(result.bestOption.type, "direct");
+    assert.equal(result.bestOption.legs[1].direction, "estimado");
+    assert.equal(result.bestOption.legs[1].directionValid, true);
+    assert.equal(result.bestOption.directionConfidence, "medium");
+    assert.ok(result.bestOption.directionWarnings.length > 0);
+});
+
+test("permite sentido inverso solo con confianza baja", () => {
+    const geojson = featureCollection([
+        lineString([
+            [-89.19, 13.7],
+            [-89.21, 13.7]
+        ], { direction: "regreso" })
+    ]);
+    const routes = normalizeRoutes([{
+        route: "R",
+        name: "Ruta inversa",
+        color: "#1E88E5",
+        geojson
+    }]);
+    const result = planTrip({
+        origin: { latitude: 13.7, longitude: -89.21 },
+        destination: { latitude: 13.7, longitude: -89.19 },
+        routes
+    });
+
+    assert.equal(result.bestOption.type, "direct");
+    assert.equal(result.bestOption.legs[1].directionValid, false);
+    assert.equal(result.bestOption.directionConfidence, "low");
+    assert.ok(result.bestOption.directionWarnings.length > 0);
 });
 
 test("el origen puede expandirse hasta un máximo de 5000 metros", () => {
@@ -242,6 +326,50 @@ test("encuentra una combinación con un transbordo", () => {
     );
 });
 
+test("valida el sentido de cada leg en un transbordo", () => {
+    const routes = normalizeRoutes([
+        {
+            route: "A",
+            name: "Ruta A",
+            color: "#1E88E5",
+            geojson: featureCollection([
+                lineString([
+                    [-89.21, 13.7],
+                    [-89.2, 13.7]
+                ], { direction: "ida" })
+            ])
+        },
+        {
+            route: "B",
+            name: "Ruta B",
+            color: "#43A047",
+            geojson: featureCollection([
+                lineString([
+                    [-89.2, 13.7],
+                    [-89.2, 13.71]
+                ], { direction: "ida" })
+            ])
+        }
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7, longitude: -89.21 },
+        destination: { latitude: 13.71, longitude: -89.2 },
+        routes
+    });
+    const busLegs = result.bestOption.legs.filter(
+        leg => leg.type === "bus"
+    );
+
+    assert.equal(result.bestOption.directionConfidence, "high");
+    assert.equal(result.bestOption.directionWarnings.length, 0);
+    assert.equal(busLegs.length, 2);
+    assert.ok(busLegs.every(leg => leg.directionValid));
+    assert.ok(busLegs.every(leg =>
+        leg.fromDistanceAlongLineMeters <
+        leg.toDistanceAlongLineMeters
+    ));
+});
+
 test("termina sin resultado al alcanzar el radio máximo", () => {
     const routes = normalizeRoutes([
         createRoute("A", [
@@ -291,6 +419,12 @@ test("normaliza GeometryCollection sin perder sus líneas", () => {
     }]);
 
     assert.equal(route.lines.length, 2);
+    assert.equal(route.lines[0].route, "GC");
+    assert.equal(route.lines[0].name, "Ruta GeometryCollection");
+    assert.equal(route.lines[0].color, "#00897B");
+    assert.equal(route.lines[0].direction, "estimado");
+    assert.equal(route.lines[0].featureIndex, 0);
+    assert.ok(Array.isArray(route.lines[0].coordinates));
 });
 
 test("respeta un radio máximo personalizado", () => {
@@ -561,4 +695,38 @@ test("no crea ciclos ni supera el máximo de dos transbordos", () => {
     });
 
     assert.equal(result.bestOption, null);
+});
+
+test("respeta el límite de estados y expone métricas opcionales", () => {
+    const routes = normalizeRoutes([
+        createRoute("A", [
+            [-89.22, 13.7],
+            [-89.21, 13.7]
+        ]),
+        createRoute("B", [
+            [-89.21, 13.7],
+            [-89.2, 13.71]
+        ]),
+        createRoute("C", [
+            [-89.2, 13.71],
+            [-89.19, 13.71]
+        ])
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7, longitude: -89.22 },
+        destination: { latitude: 13.71, longitude: -89.19 },
+        routes,
+        options: { enablePerformanceLogs: true }
+    });
+
+    assert.ok(
+        result.search.performance.searchedStates <=
+        routingConfig.maximumSearchStates
+    );
+    assert.ok(
+        result.search.performance.totalMilliseconds >= 0
+    );
+    assert.ok(
+        result.search.performance.connectionsMilliseconds >= 0
+    );
 });

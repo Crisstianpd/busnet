@@ -4,11 +4,12 @@
     right: 18px;
     bottom: 18px;
     z-index: 12;
-    border: 1px solid rgba(201, 215, 229, 0.92);
-    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.78);
     color: #16243a;
-    box-shadow: 0 18px 45px rgba(32, 65, 98, 0.2);
-    backdrop-filter: blur(16px);
+    box-shadow: 0 14px 34px rgba(32, 65, 98, 0.16);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     font-family: "Nunito Sans", sans-serif;
 }
 
@@ -47,11 +48,11 @@
 }
 
 .community-panel {
-    width: min(360px, calc(100vw - 36px));
+    width: min(300px, calc(100vw - 36px));
     max-height: calc(100vh - 36px);
     overflow-y: auto;
-    border-radius: 22px;
-    padding: 17px;
+    border-radius: 19px;
+    padding: 14px;
 }
 
 .community-header {
@@ -200,6 +201,81 @@
     color: #fff;
     font-weight: 900;
     cursor: pointer;
+}
+
+.community-report-form {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    padding-top: 10px;
+}
+
+.community-report-form label {
+    display: grid;
+    gap: 4px;
+    color: var(--ui-muted, #68778b);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.community-report-form select,
+.community-report-form textarea,
+.community-report-form button {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--ui-border, #dce6f0);
+    border-radius: 9px;
+    padding: 8px 9px;
+    background: rgba(247, 250, 252, 0.82);
+    color: var(--ui-text, #16243a);
+    font: inherit;
+}
+
+.community-report-form textarea {
+    resize: vertical;
+}
+
+.community-report-form button {
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.community-report-form button:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+}
+
+.community-report-form button.is-selecting {
+    border-color: #f59e0b;
+}
+
+.community-report-form button.is-submit {
+    border-color: transparent;
+    background: #f97316;
+    color: #172033;
+}
+
+.community-report-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+}
+
+.community-report-location {
+    border-radius: 9px;
+    padding: 7px 9px;
+    font-size: 0.68rem;
+}
+
+.community-report-location.is-ready {
+    background: rgba(34, 197, 94, 0.12);
+    color: #166534;
+}
+
+.community-report-location.is-pending {
+    background: rgba(245, 158, 11, 0.12);
+    color: #854d0e;
 }
 
 @media (max-width: 640px) {
