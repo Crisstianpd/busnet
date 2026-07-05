@@ -86,7 +86,16 @@ export default function MapView({
     useEffect(() => {
         const map = mapRef.current;
 
-        if (!destination || !map) return;
+        if (!map) return;
+
+        if (!destination) {
+            if (destinationMarkerRef.current) {
+                destinationMarkerRef.current.remove();
+                destinationMarkerRef.current = null;
+            }
+
+            return;
+        }
 
         if (!destinationMarkerRef.current) {
             destinationMarkerRef.current = new maplibregl.Marker({

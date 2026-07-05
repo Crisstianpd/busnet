@@ -6,6 +6,7 @@ import {
     getRoute,
     getRoutes,
     planTrip,
+    startTrip,
     searchPlaces
 } from "../services/api";
 
@@ -23,10 +24,15 @@ export default function Home() {
     const [searchLoading, setSearchLoading] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [destination, setDestination] = useState(null);
+    const [destinationLabel, setDestinationLabel] = useState("");
+    const [allowMapDestinationSelection, setAllowMapDestinationSelection] = useState(false);
+    const [routeCalculated, setRouteCalculated] = useState(false);
     const [plan, setPlan] = useState(null);
     const [plannedGeojsons, setPlannedGeojsons] = useState([]);
     const [planning, setPlanning] = useState(false);
     const [planningError, setPlanningError] = useState("");
+    const [startingTrip, setStartingTrip] = useState(false);
+    const [tripMessage, setTripMessage] = useState("");
 
     useEffect(() => {
         getRoutes()
@@ -64,11 +70,22 @@ export default function Home() {
         };
     }, [searchQuery]);
 
-    const handleDestinationSelect = useCallback(async coordinates => {
+    const handleDestinationSelect = useCallback(coordinates => {
         setDestination(coordinates);
+        setDestinationLabel("Punto seleccionado en el mapa");
+        setSelectedPlace(null);
+        setSearchResults([]);
         setPlanningError("");
+        setTripMessage("");
         setPlan(null);
         setPlannedGeojsons([]);
+        setRouteCalculated(false);
+    }, []);
+
+    const handleCalculateRoute = useCallback(async () => {
+        if (!destination) {
+            return;
+        }
 
         if (!location) {
             setPlanningError(
@@ -79,10 +96,12 @@ export default function Home() {
             return;
         }
 
+        setPlanningError("");
+        setTripMessage("");
         setPlanning(true);
 
         try {
-            const result = await planTrip(location, coordinates);
+            const result = await planTrip(location, destination);
             const routeGeojsons = await Promise.all(
                 result.bestOption.routes.map(getRoute)
             );
@@ -91,14 +110,16 @@ export default function Home() {
             setGeojson(null);
             setPlan(result);
             setPlannedGeojsons(routeGeojsons);
+            setRouteCalculated(true);
         }
         catch (error) {
             setPlanningError(error.message);
+            setRouteCalculated(false);
         }
         finally {
             setPlanning(false);
         }
-    }, [location, locationError, locationLoading]);
+    }, [destination, location, locationError, locationLoading]);
 
     async function handleRouteChange(event) {
         const route = event.target.value;
@@ -125,6 +146,13 @@ export default function Home() {
 
         setSearchQuery(query);
         setSelectedPlace(null);
+        setDestination(null);
+        setDestinationLabel("");
+        setPlan(null);
+        setPlannedGeojsons([]);
+        setPlanningError("");
+        setTripMessage("");
+        setRouteCalculated(false);
 
         if (!query.trim()) {
             setSearchResults([]);
@@ -138,7 +166,60 @@ export default function Home() {
         setSelectedPlace(place);
         setSearchQuery(place.title);
         setSearchResults([]);
-        handleDestinationSelect({ latitude, longitude });
+        setDestination({ latitude, longitude });
+        setDestinationLabel(place.title);
+        setPlan(null);
+        setPlannedGeojsons([]);
+        setPlanningError("");
+        setTripMessage("");
+        setRouteCalculated(false);
+    }
+
+    async function handleStartTrip() {
+        if (!destination || !routeCalculated) {
+            return;
+        }
+
+        if (!location) {
+            setTripMessage(
+                locationLoading
+                    ? "Esperando tu ubicación para iniciar el viaje…"
+                    : locationError || "No se pudo obtener tu ubicación."
+            );
+            return;
+        }
+
+        setStartingTrip(true);
+        setTripMessage("");
+
+        try {
+            const response = await startTrip(location, {
+                ...destination,
+                name: destinationLabel || selectedPlace?.title || "Destino seleccionado"
+            });
+
+            setTripMessage(response.message || "Viaje iniciado.");
+        }
+        catch (error) {
+            setTripMessage(error.message);
+        }
+        finally {
+            setStartingTrip(false);
+        }
+    }
+
+    function handleCancelTrip() {
+        setSelectedPlace(null);
+        setDestination(null);
+        setDestinationLabel("");
+        setSearchQuery("");
+        setSearchResults([]);
+        setPlan(null);
+        setPlannedGeojsons([]);
+        setPlanningError("");
+        setTripMessage("");
+        setRouteCalculated(false);
+        setStartingTrip(false);
     }
 
     return (
@@ -150,21 +231,38 @@ export default function Home() {
             }}
         >
             <div className="search-panel">
-                <label className="search-label" htmlFor="place-search">
-                    ¿A dónde vas?
-                </label>
+                <div className="search-header">
+                    <div className="search-input-group">
+                        <label className="search-label" htmlFor="place-search">
+                            ¿A dónde vas?
+                        </label>
 
-                <input
-                    id="place-search"
-                    className="search-input"
-                    type="search"
-                    value={searchQuery}
-                    onChange={handleSearchChange}
-                    placeholder="Busca un destino en El Salvador"
-                />
+                        <input
+                            id="place-search"
+                            className="search-input"
+                            type="search"
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                            placeholder="Busca un destino en El Salvador"
+                        />
+                    </div>
+
+                    <button
+                        type="button"
+                        className={`map-toggle-button ${allowMapDestinationSelection ? "is-active" : ""}`}
+                        onClick={() => setAllowMapDestinationSelection(value => !value)}
+                        aria-pressed={allowMapDestinationSelection}
+                        aria-label="Activar o desactivar selección de punto en el mapa"
+                    >
+                        <span className="map-toggle-button-dot" aria-hidden="true" />
+                        <span className="map-toggle-button-text">
+                            {allowMapDestinationSelection ? "Mapa activo" : "Mapa apagado"}
+                        </span>
+                    </button>
+                </div>
 
                 <div className="search-note">
-                    Usa tu ubicación como origen o haz clic en el mapa.
+                    Activa el toggle para colocar un punto en el mapa. Primero calcula la ruta y luego realiza el viaje.
                 </div>
 
                 <div className="search-results">
@@ -207,6 +305,43 @@ export default function Home() {
                     ))}
                 </div>
 
+                {destination && (
+                    <div className="trip-actions">
+                        <div className="trip-destination">
+                            Destino seleccionado: <b>{destinationLabel || selectedPlace?.title || "Punto en el mapa"}</b>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="trip-start-button"
+                            onClick={routeCalculated ? handleStartTrip : handleCalculateRoute}
+                            disabled={startingTrip || planning}
+                        >
+                            {startingTrip
+                                ? "Iniciando viaje..."
+                                : planning
+                                    ? "Calculando ruta..."
+                                    : routeCalculated
+                                        ? "Realizar viaje"
+                                        : "Calcular ruta"}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="trip-cancel-button"
+                            onClick={handleCancelTrip}
+                        >
+                            Cancelar viaje
+                        </button>
+
+                        {tripMessage && (
+                            <div className="trip-message">
+                                {tripMessage}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <label className="route-label" htmlFor="route-select">
                     Explorar una ruta manualmente
                 </label>
@@ -239,7 +374,7 @@ export default function Home() {
                 location={location}
                 destination={destination}
                 plan={plan}
-                onDestinationSelect={handleDestinationSelect}
+                onDestinationSelect={allowMapDestinationSelection ? handleDestinationSelect : null}
             />
         </div>
     );
