@@ -8,10 +8,10 @@
 
 ## F0 — Design System & Repo Setup
 
-- [ ] **F0.1 — Commit de docs.** Copiar CLAUDE.md a la raíz y docs/ completo al repo.
+- [x] **F0.1 — Commit de docs.** Copiar CLAUDE.md a la raíz y docs/ completo al repo.
   AC: `CLAUDE.md`, `docs/{ULTRAPLAN,SPRINT,ARCHITECTURE,GUARDRAILS}.md` y `docs/prompts/` existen en el repo y están commiteados.
 
-- [ ] **F0.2 — Inventario del repo y del motor.** Leer todo el árbol del repo. Producir en el reporte: (a) estructura real, (b) paths exactos del motor de rutas, (c) formato real del output de `/plan`, (d) gaps vs ARCHITECTURE.md.
+- [x] **F0.2 — Inventario del repo y del motor.** Leer todo el árbol del repo. Producir en el reporte: (a) estructura real, (b) paths exactos del motor de rutas, (c) formato real del output de `/plan`, (d) gaps vs ARCHITECTURE.md.
   AC: GUARDRAILS §1 actualizado con los paths del motor; ARCHITECTURE.md anotado con desviaciones reales (sección "Estado real" al final); ningún archivo de código modificado.
 
 - [ ] **F0.3 — Vendor del design system.** Descomprimir el export de Claude Design en `design-system/` y commitearlo.

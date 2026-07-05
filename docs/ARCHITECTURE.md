@@ -135,3 +135,65 @@ busnet/
 | GPS | simulado sobre polylines | ULTRAPLAN §6 |
 | Estado servidor en memoria | sin DB | Demo de una noche; seed reproducible |
 | Deploy | Netlify (front) + Railway/Render (server) | Créditos del buildathon + rapidez |
+
+---
+
+## Estado real (inventario F0.2 — repo `Crisstianpd/busnet`)
+
+> Anotado en F0.2. La estructura objetivo de arriba es la aspiración; esto es lo que **existe hoy**. Lo nuevo se adapta a esto; el motor no se reubica.
+
+### Estructura real: monorepo `backend/` + `frontend/` (no `server/`+`src/`+`shared/`+`data/`)
+
+```
+busnet/
+├── .gitignore                 (node_modules, .env, dist, .cache, .DS_Store)
+├── backend/                   (Node + Express 5, ESM, PORT 3000)
+│   ├── index.js               ← Express: /routes, /routes/:route, /search, /plan (POST)
+│   ├── config/routing.js      ← MOTOR (config)
+│   ├── services/
+│   │   ├── routePlanner.js     ← MOTOR (núcleo)
+│   │   ├── geojsonNormalizer.js← MOTOR
+│   │   └── planRequestValidator.js ← MOTOR (contrato entrada)
+│   ├── geojson/*.geojson       ← 21 rutas canónicas (NO data/routes/)
+│   ├── tests/*.test.js         ← node --test
+│   └── package.json            (turf, express, cors, axios, dotenv; nodemon)
+├── frontend/                  (React 19 + Vite 8, ESM)
+│   └── src/
+│       ├── main.jsx, main.css
+│       ├── pages/Home.jsx
+│       ├── components/Map/MapView.jsx, Trip/TripOptions.jsx
+│       ├── hooks/useLocation.jsx
+│       ├── services/api.js     ← ya llama /plan, /routes, Nominatim
+│       └── utils/colors.js
+└── docs/ (BUSNET-MASTER-PLAN.md, TRIP-PLANNER.md, ideas iniciales)
+```
+
+### Desviaciones vs objetivo (gaps que la UI/adapters deben absorber)
+
+1. **Rutas**: viven en `backend/geojson/` (21 archivos), no `data/routes/`. Se cargan en RAM al boot.
+2. **Motor**: en `backend/services/`, no `server/engine/`. Paths exactos en GUARDRAILS §1.
+3. **`/plan` es POST con JSON**, no `GET /plan?from&to`. Body: `{ origin:{latitude,longitude}, destination:{latitude,longitude}, options:{maximumRadiusMeters?} }`.
+4. **El output real de `/plan` ≠ contrato `TripPlan`.** Forma real:
+   ```
+   { search:{originRadiusMeters,destinationRadiusMeters,maximumRadiusMeters},
+     bestOption: Option | null,
+     alternatives: Option[] }   // máx 4 total, ordenadas por caminata→radio→transbordos
+   Option = { type:"direct"|"transfer", routes:[...], routeDetails:[{route,name,color}],
+     transfers, walkingDistanceMeters, boardingDistanceMeters, destinationDistanceMeters,
+     transferWalkDistanceMeters, radiusUsedMeters,
+     boardingPoint:{latitude,longitude}, dropoffPoint:{...},
+     transferFromPoint?, transferToPoint?, *Label }
+   ```
+   **NO trae**: `minutes`, `costUSD`, `headwayMinutes`, geometría por leg, ni nombres de parada.
+   → `planAdapter` (F2.1) debe **sintetizar** tiempo/costo/frecuencia y **derivar geometría de leg**
+   recortando el GeoJSON de `/routes/:route` entre boarding/transfer/dropoff (snap points). Gap grande.
+5. **No existe `design-system/`** aún (F0.3 bloqueado en el export de Claude Design).
+6. **Solo existen 4 endpoints**: `/routes`, `/routes/:route`, `/search`, `/plan`. Faltan `/geocode`, `/speak`, WS `/buses`, `/fleet/*`, `simulator` (F1.5, F2.5, F3, F4).
+7. **`/search`** ya existe en backend (busca dentro de features de rutas) — distinto del geocode Nominatim que el frontend ya hace client-side en `api.js`.
+8. **Frontend**: React 19 + Vite 8 + maplibre-gl 5. **Falta** react-router (rutas `/` y `/fleet`), TanStack Query y Tailwind/tokens. `api.js` hardcodea `http://localhost:3000`.
+9. **Gestor de paquetes mixto**: hay lockfiles pnpm (backend+frontend) y también `package-lock.json` (frontend). Decidir uno.
+10. **Puertos**: backend 3000; frontend Vite 5173 (default). El README dice app en 5173 y fleet en 5173/fleet — coherente con frontend, pero el router aún no existe.
+
+### Implicación para el plan
+- El **motor funciona** y ya está consumido por `frontend/src/services/api.js::planTrip`. F2.6 ("conectar motor real") está parcialmente hecho de facto.
+- El costo real está en el **planAdapter** (sintetizar minutos/costo/frecuencia + geometría de legs) y en todo lo que no existe (design-system, router, simulador, fleet, integraciones).

@@ -10,9 +10,18 @@
 - Excepción única: bug que rompe el demo script, confirmado por Eduardo, con commit aislado etiquetado `hotfix(engine):`.
 
 ```
-# Paths del motor (completar en F0.2):
-# - src/...
-# - src/...
+# Paths del motor (inventariados en F0.2 — repo Crisstianpd/busnet, monorepo backend/ + frontend/):
+# READ-ONLY (lógica de cálculo de rutas):
+# - backend/services/routePlanner.js        ← núcleo: planTrip, findNearbyRoutes, findTransfer, ranking
+# - backend/services/geojsonNormalizer.js   ← normalizeRoutes → route.lines (prepara geometría)
+# - backend/services/planRequestValidator.js ← contrato de entrada de /plan
+# - backend/config/routing.js               ← radii, maximumTransfers, maximumAlternatives (Object.freeze)
+# - backend/tests/{routePlanner,planRequestValidator}.test.js ← tests del motor
+# DATOS canónicos (nunca borrar/sobrescribir; ver §2):
+# - backend/geojson/*.geojson               ← 21 rutas reales, cargadas al boot por index.js
+# ENGINE-ADJACENT (backend/index.js): los handlers /plan, /routes, /routes/:route y /search
+#   y la carga de rutas al boot son read-only. Se PUEDEN AGREGAR endpoints nuevos
+#   (/geocode, /speak, /buses, /fleet/*) sin tocar los existentes.
 ```
 
 ## 2. Datos
