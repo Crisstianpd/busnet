@@ -14,6 +14,9 @@ export default defineConfig({
       // Vendored Claude Design export (read-only). Fleet dashboard consumes it.
       '@ds': fileURLToPath(new URL('../design-system', import.meta.url)),
     },
+    // The design-system/ sources live outside frontend/, so bare `react` imports
+    // from them must resolve to this app's single copy. dedupe forces that.
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     // Allow serving the sibling design-system/ dir (outside frontend root).
