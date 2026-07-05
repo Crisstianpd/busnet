@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { centerOfMass } from "@turf/turf";
 import { normalizeRoutes } from "./services/geojsonNormalizer.js";
 import { validatePlanRequest } from "./services/planRequestValidator.js";
@@ -20,7 +21,9 @@ const PORT = process.env.PORT || 3000;
 const EL_SALVADOR_BBOX = [-90.15, 13.0, -87.55, 14.6];
 
 // Carpeta donde se encuentran los GeoJSON
-const geojsonFolder = "./geojson";
+const geojsonFolder = fileURLToPath(
+    new URL("./geojson", import.meta.url)
+);
 
 // =========================================
 // Cargar todas las rutas al iniciar
