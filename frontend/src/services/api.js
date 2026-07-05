@@ -1,5 +1,3 @@
-import Fuse from "fuse.js";
-
 const API = "http://localhost:3000";
 const EL_SALVADOR_VIEWBOX = "-90.15,14.60,-87.55,13.00";
 

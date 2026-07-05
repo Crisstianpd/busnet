@@ -20,7 +20,7 @@ export default function MapView({
     plannedGeojsons = [],
     location,
     destination,
-    plan,
+    planOption,
     onDestinationSelect
 }) {
     const mapContainer = useRef(null);
@@ -190,30 +190,65 @@ export default function MapView({
         for (const marker of planMarkersRef.current) marker.remove();
         planMarkersRef.current = [];
 
-        if (!map || !plan?.bestOption) return;
+        if (!map || !planOption) return;
 
-        const points = [
-            {
-                location: plan.bestOption.boardingPoint,
+        const points = [];
+
+        if (planOption.boardingPoint) {
+            points.push({
+                location: planOption.boardingPoint,
                 color: "#16A34A",
                 label: "Punto de abordaje aproximado"
-            },
-            {
-                location: plan.bestOption.dropoffPoint,
-                color: "#EA580C",
-                label: "Punto de descenso aproximado"
-            }
-        ];
-
-        if (plan.bestOption.transferFromPoint) {
-            points.push({
-                location: plan.bestOption.transferFromPoint,
-                color: "#7C3AED",
-                label: "Punto de transbordo aproximado"
             });
         }
 
+        if (planOption.dropoffPoint) {
+            points.push({
+                location: planOption.dropoffPoint,
+                color: "#EA580C",
+                label: "Punto de descenso aproximado"
+            });
+        }
+
+        const transfers = planOption.transferPoints?.length > 0
+            ? planOption.transferPoints
+            : planOption.transferFromPoint
+                ? [{
+                    fromPoint: planOption.transferFromPoint,
+                    toPoint: planOption.transferToPoint
+                }]
+                : [];
+
+        for (const transfer of transfers) {
+            if (!transfer.fromPoint) continue;
+
+            points.push({
+                location: transfer.fromPoint,
+                color: "#7C3AED",
+                label: "Punto de transbordo aproximado"
+            });
+
+            if (
+                transfer.toPoint &&
+                (
+                    transfer.toPoint.latitude !== transfer.fromPoint.latitude ||
+                    transfer.toPoint.longitude !== transfer.fromPoint.longitude
+                )
+            ) {
+                points.push({
+                    location: transfer.toPoint,
+                    color: "#A855F7",
+                    label: "Continuación del transbordo aproximado"
+                });
+            }
+        }
+
         for (const item of points) {
+            if (
+                !Number.isFinite(item.location?.latitude) ||
+                !Number.isFinite(item.location?.longitude)
+            ) continue;
+
             const marker = new maplibregl.Marker({
                 color: item.color,
                 scale: 0.8
@@ -224,7 +259,7 @@ export default function MapView({
 
             planMarkersRef.current.push(marker);
         }
-    }, [plan]);
+    }, [planOption]);
 
     return (
         <div
