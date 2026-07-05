@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "fuse.js": "^7.4.2",
     "maplibre-gl": "^5.24.0",
     "maplibre-theme": "^1.0.0",
     "react": "^19.2.7",

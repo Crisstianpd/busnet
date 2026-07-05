@@ -1,5 +1,6 @@
 const API = "http://localhost:3000";
 const EL_SALVADOR_VIEWBOX = "-90.15,14.60,-87.55,13.00";
+import Fuse from "fuse.js";
 
 async function parseResponse(response) {
     const data = await response.json();
@@ -8,7 +9,8 @@ async function parseResponse(response) {
         throw new Error(data.error || `Error HTTP ${response.status}`);
     }
 
-    return data;
+    return response.json();
+
 }
 
 export async function getRoutes() {
@@ -24,6 +26,7 @@ export async function getRoute(id) {
 }
 
 export async function searchPlaces(query, signal) {
+
     const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=sv&bounded=1&viewbox=${EL_SALVADOR_VIEWBOX}&addressdetails=1&limit=8`,
         {
@@ -33,52 +36,25 @@ export async function searchPlaces(query, signal) {
             }
         }
     );
-    const results = await parseResponse(response);
 
-    return results
-        .map((place, index) => {
-            const latitude = Number(place.lat);
-            const longitude = Number(place.lon);
-            const address = place.address || {};
-            const title =
-                place.name ||
-                place.display_name?.split(",")[0] ||
-                query;
-            const locality =
-                address.city ||
-                address.town ||
-                address.village ||
-                address.municipality ||
-                address.suburb ||
-                address.county ||
-                "El Salvador";
+    const results = await parseJson(response);
 
-            return {
-                id: `${place.osm_type || "place"}-${place.osm_id || index}`,
-                title,
-                subtitle: locality,
-                description: place.display_name,
-                coordinates: [longitude, latitude]
-            };
-        })
-        .filter(place =>
-            Number.isFinite(place.coordinates[0]) &&
-            Number.isFinite(place.coordinates[1])
-        );
-}
+    return results.map((place, index) => {
 
-export async function planTrip(origin, destination, options = {}) {
-    const response = await fetch(`${API}/plan`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            origin,
-            destination,
-            options
-        })
-    });
+        const latitude = Number(place.lat);
+        const longitude = Number(place.lon);
+        const address = place.address || {};
+        const title = place.name || place.display_name?.split(",")[0] || query;
+        const locality = address.city || address.town || address.village || address.municipality || address.suburb || address.county || "El Salvador";
 
-    return parseResponse(response);
+        return {
+            id: `${place.osm_type || "place"}-${place.osm_id || index}`,
+            title,
+            subtitle: locality,
+            description: place.display_name,
+            coordinates: [longitude, latitude],
+        };
+
+    }).filter(place => Number.isFinite(place.coordinates[0]) && Number.isFinite(place.coordinates[1]));
+
 }
