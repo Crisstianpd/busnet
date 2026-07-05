@@ -82,3 +82,18 @@ export async function planTrip(origin, destination, options = {}) {
 
     return parseResponse(response);
 }
+
+export async function startTrip(origin, destination) {
+    const response = await fetch(`${API}/trip/start`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            origin,
+            destination
+        })
+    });
+
+    return parseResponse(response);
+}

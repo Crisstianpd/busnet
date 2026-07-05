@@ -109,6 +109,12 @@ function buildSearchText(route, feature) {
     );
 }
 
+function runTripPlaceholder({ origin, destination }) {
+    console.log("\n🧭 [VIAJE PLACEHOLDER] Iniciando viaje");
+    console.log("📍 Origen:", origin);
+    console.log("🏁 Destino:", destination);
+}
+
 const normalizedRoutes = normalizeRoutes(routes);
 
 console.log(
@@ -214,6 +220,46 @@ app.post("/plan", (req, res) => {
     }
 
     return res.json(result);
+});
+
+app.post("/trip/start", (req, res) => {
+    const {
+        origin,
+        destination
+    } = req.body || {};
+
+    const originLat = Number(origin?.latitude);
+    const originLng = Number(origin?.longitude);
+    const destinationLat = Number(destination?.latitude);
+    const destinationLng = Number(destination?.longitude);
+
+    if (
+        !Number.isFinite(originLat)
+        || !Number.isFinite(originLng)
+        || !Number.isFinite(destinationLat)
+        || !Number.isFinite(destinationLng)
+    ) {
+        return res.status(400).json({
+            error: "Origen y destino deben incluir coordenadas válidas."
+        });
+    }
+
+    runTripPlaceholder({
+        origin: {
+            latitude: originLat,
+            longitude: originLng
+        },
+        destination: {
+            latitude: destinationLat,
+            longitude: destinationLng,
+            name: destination?.name || "Destino seleccionado"
+        }
+    });
+
+    return res.json({
+        ok: true,
+        message: "Viaje simulado correctamente."
+    });
 });
 
 // =========================================

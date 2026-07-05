@@ -21,7 +21,9 @@ body {
     top: 16px;
     left: 16px;
     z-index: 10;
-    width: min(420px, calc(100vw - 32px));
+    width: min(620px, calc(100vw - 32px));
+    overflow-y: hidden;
+    min-height: 100vh - 32px;
     padding: 16px;
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 18px;
@@ -29,6 +31,66 @@ body {
     color: #f8fafc;
     backdrop-filter: blur(14px);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.search-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.search-input-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.map-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-end;
+    margin-bottom: 6px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #94a3b8;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.map-toggle-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(148, 163, 184, 0.34);
+}
+
+.map-toggle-button.is-active {
+    background: rgba(249, 115, 22, 0.16);
+    border-color: rgba(249, 115, 22, 0.7);
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.08), 0 0 18px rgba(249, 115, 22, 0.28);
+    color: #fff7ed;
+}
+
+.map-toggle-button-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.map-toggle-button.is-active .map-toggle-button-dot {
+    background: #f97316;
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.95);
+}
+
+.map-toggle-button-text {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .search-label,
@@ -127,4 +189,49 @@ body {
 
 .route-select {
     appearance: none;
+}
+
+.trip-actions {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(15, 23, 42, 0.72);
+    display: grid;
+    gap: 8px;
+}
+
+.trip-destination {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+}
+
+.trip-start-button,
+.trip-cancel-button {
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.trip-start-button {
+    color: #111827;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+}
+
+.trip-start-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.trip-cancel-button {
+    color: #f8fafc;
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.trip-message {
+    font-size: 0.83rem;
+    color: #cbd5e1;
 }
