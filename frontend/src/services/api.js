@@ -1,4 +1,6 @@
 const API = import.meta.env.VITE_API_URL || "http://localhost:3000";
+console.log("API:", API);
+
 const EL_SALVADOR_VIEWBOX = "-90.15,14.60,-87.55,13.00";
 
 async function parseResponse(response) {
