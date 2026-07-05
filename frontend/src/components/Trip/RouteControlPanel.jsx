@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import busnetBadge from "@ds/assets/logo/busnet-badge.svg";
 import { Icon } from "../ui";
 import "./RouteControlPanel.css";
@@ -49,9 +49,14 @@ export default function RouteControlPanel({
     const canCalculate = Boolean(origin && destination) && !planning;
     const showStartTripAction = false;
     const [mobileSheetExpanded, setMobileSheetExpanded] = useState(false);
+    const panelRef = useRef(null);
     const sheetDragStartY = useRef(null);
     const sheetDragHandled = useRef(false);
     const mobileSheetCollapsed = routeCalculated && !mobileSheetExpanded;
+
+    useEffect(() => {
+        panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    }, [routeCalculated, mobileSheetExpanded]);
 
     const collapseMobileSheet = () => {
         if (typeof window !== "undefined" && window.innerWidth <= 720) {
@@ -111,6 +116,7 @@ export default function RouteControlPanel({
 
     return (
         <section
+            ref={panelRef}
             className={`route-control-panel ${
                 routeCalculated ? "is-planned" : ""
             } ${mobileSheetCollapsed ? "is-collapsed" : ""}`}

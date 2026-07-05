@@ -377,11 +377,16 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    background: var(--ui-accent);
+    background: linear-gradient(
+        135deg,
+        var(--ui-accent),
+        var(--busnet-green-600)
+    );
     color: var(--text-on-green);
     box-shadow:
         var(--shadow-md),
-        0 0 0 1px color-mix(in srgb, var(--ui-accent) 32%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--ui-accent) 36%, transparent),
+        0 14px 30px color-mix(in srgb, var(--ui-accent) 18%, transparent);
 }
 
 .route-control-primary:not(:disabled):hover,
@@ -391,10 +396,13 @@
 }
 
 .route-control-primary:disabled {
-    background: var(--state-disabled-bg);
-    color: var(--state-disabled-fg);
-    box-shadow: none;
+    background: color-mix(in srgb, var(--ui-surface-soft) 72%, var(--ui-accent));
+    color: color-mix(in srgb, var(--ui-text) 76%, var(--ui-muted));
+    box-shadow:
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent),
+        0 0 0 1px color-mix(in srgb, var(--ui-border) 82%, transparent);
     cursor: not-allowed;
+    opacity: 0.78;
 }
 
 .route-control-trip-actions {
