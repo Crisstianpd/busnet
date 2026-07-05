@@ -16,7 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const EL_SALVADOR_BBOX = [-90.15, 13.0, -87.55, 14.6];
 
 // Carpeta donde se encuentran los GeoJSON
@@ -349,6 +349,6 @@ app.post("/trip/start", (req, res) => {
 // =========================================
 
 app.listen(PORT, () => {
-    console.log(`\n🚍 BusNET Backend iniciado con éxito`);
-    console.log(`🔗 Local: http://localhost:${PORT}`);
+    console.log(`🚍 BusNET Backend iniciado con éxito`);
+    console.log(`🔗 Puerto: ${PORT}`);
 });
