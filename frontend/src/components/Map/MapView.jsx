@@ -193,6 +193,7 @@ export default function MapView({
     animationsEnabled = true,
     resolvedTheme = "light",
     planOption,
+    tripCleanupToken = 0,
     communityReports = [],
     onTrafficLocationSelect
 }) {
@@ -252,6 +253,15 @@ export default function MapView({
 
         map.getCanvas().style.cursor = "";
     }, []);
+
+    useEffect(() => {
+        clearRouteTemporaryMarkers();
+        clearRouteTemporaryLayers(mapRef.current);
+    }, [
+        clearRouteTemporaryLayers,
+        clearRouteTemporaryMarkers,
+        tripCleanupToken
+    ]);
 
     useEffect(() => {
         const map = new maplibregl.Map({

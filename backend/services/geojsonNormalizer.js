@@ -17,16 +17,54 @@ function hasValidCoordinates(feature) {
     );
 }
 
+function normalizeDirection(properties = {}) {
+    const explicitDirection = String(
+        properties.direction ?? ""
+    ).toLowerCase();
+
+    if (
+        explicitDirection === "ida" ||
+        explicitDirection === "regreso"
+    ) {
+        return explicitDirection;
+    }
+
+    const declaredDirection = String(
+        properties.SENTIDO ??
+        properties.sentido ??
+        properties.name ??
+        ""
+    ).toLowerCase();
+
+    if (declaredDirection.includes("regreso")) return "regreso";
+    if (declaredDirection.includes("ida")) return "ida";
+
+    return "estimado";
+}
+
 export function normalizeRoute(route) {
     const lines = [];
 
     try {
-        flattenEach(route.geojson, flattenedFeature => {
+        flattenEach(route.geojson, (
+            flattenedFeature,
+            featureIndex,
+            multiFeatureIndex
+        ) => {
             if (!hasValidCoordinates(flattenedFeature)) return;
 
             lines.push({
+                route: route.route,
+                name: route.name,
+                color: route.color,
                 feature: flattenedFeature,
-                direction: flattenedFeature.properties?.direction ?? null
+                geometry: flattenedFeature.geometry,
+                coordinates: flattenedFeature.geometry.coordinates,
+                direction: normalizeDirection(
+                    flattenedFeature.properties
+                ),
+                featureIndex,
+                multiFeatureIndex
             });
         });
     }

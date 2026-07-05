@@ -1,4 +1,4 @@
-import busnetBadge from "@ds/assets/logo/busnet-badge.svg";
+import { useState } from "react";
 import "./RouteControlPanel.css";
 
 function LocationIcon({ type }) {
@@ -39,6 +39,8 @@ export default function RouteControlPanel({
     locationAvailable,
     locationLoading,
     onRequestLocation,
+    animationsEnabled,
+    onToggleAnimations,
     routes,
     selectedRoute,
     onRouteChange,
@@ -46,28 +48,55 @@ export default function RouteControlPanel({
 }) {
     const canCalculate = Boolean(origin && destination) && !planning;
     const showStartTripAction = false;
+    const [collapsed, setCollapsed] = useState(false);
+
+    if (collapsed && routeCalculated) {
+        return (
+            <section
+                className="route-control-panel is-collapsed"
+                aria-label="Planificador de viaje comprimido"
+            >
+                <button
+                    type="button"
+                    className="route-control-expand"
+                    onClick={() => setCollapsed(false)}
+                    aria-expanded="false"
+                    title="Mostrar panel de viaje"
+                >
+                    <span className="route-control-expand-icon" aria-hidden="true">
+                        ›
+                    </span>
+                    <span>
+                        <small>BUSNET</small>
+                        Ver viaje
+                    </span>
+                </button>
+            </section>
+        );
+    }
 
     return (
-        <section
-            className={`route-control-panel ${
-                routeCalculated ? "is-planned" : ""
-            }`}
-            aria-label="Planificador de viaje"
-        >
+        <section className="route-control-panel" aria-label="Planificador de viaje">
             <header className="route-control-brand">
-                <div className="route-control-brand-lockup">
-                    <img
-                        className="route-control-logo"
-                        src={busnetBadge}
-                        alt=""
-                        aria-hidden="true"
-                    />
-                    <div>
-                        <span className="route-control-eyebrow">Movilidad inteligente</span>
-                        <h1>BUSNET</h1>
-                    </div>
+                <div>
+                    <span className="route-control-eyebrow">Movilidad inteligente</span>
+                    <h1>BUSNET</h1>
                 </div>
-                <span className="route-control-badge">El Salvador</span>
+                <div className="route-control-brand-actions">
+                    {routeCalculated && (
+                        <button
+                            type="button"
+                            className="route-control-collapse"
+                            onClick={() => setCollapsed(true)}
+                            aria-expanded="true"
+                            title="Comprimir panel para ver el mapa"
+                        >
+                            <span aria-hidden="true">‹</span>
+                            Comprimir
+                        </button>
+                    )}
+                    <span className="route-control-badge">El Salvador</span>
+                </div>
             </header>
 
             <div className="route-control-utilities">
@@ -82,6 +111,19 @@ export default function RouteControlPanel({
                         {locationLoading ? "Detectando ubicación…" : "Activar ubicación"}
                     </button>
                 )}
+                <button
+                    type="button"
+                    className={`route-control-utility ${
+                        animationsEnabled ? "is-active" : ""
+                    }`}
+                    onClick={onToggleAnimations}
+                    aria-pressed={animationsEnabled}
+                >
+                    <span aria-hidden="true">{animationsEnabled ? "✦" : "—"}</span>
+                    {animationsEnabled
+                        ? "Desactivar animaciones"
+                        : "Activar animaciones"}
+                </button>
             </div>
 
             <div className="route-control-fields">
@@ -125,7 +167,7 @@ export default function RouteControlPanel({
                         type="search"
                         value={searchQuery}
                         placeholder={
-                            destinationLabel || "Busca destino o elige en mapa"
+                            destinationLabel || "Busca un lugar o selecciónalo en el mapa"
                         }
                         onChange={onSearchChange}
                         onFocus={onDestinationFocus}
@@ -200,7 +242,10 @@ export default function RouteControlPanel({
             <button
                 type="button"
                 className="route-control-primary"
-                onClick={onCalculateRoute}
+                onClick={() => {
+                    setCollapsed(false);
+                    onCalculateRoute();
+                }}
                 disabled={!canCalculate}
             >
                 {planning ? (
@@ -208,8 +253,6 @@ export default function RouteControlPanel({
                         <span className="route-control-spinner" aria-hidden="true" />
                         Calculando ruta…
                     </>
-                ) : routeCalculated ? (
-                    "Actualizar ruta"
                 ) : (
                     "Calcular ruta"
                 )}
@@ -230,7 +273,10 @@ export default function RouteControlPanel({
                     <button
                         type="button"
                         className="route-control-ghost"
-                        onClick={onCancelTrip}
+                        onClick={() => {
+                            setCollapsed(false);
+                            onCancelTrip();
+                        }}
                     >
                         Limpiar viaje
                     </button>
@@ -240,8 +286,6 @@ export default function RouteControlPanel({
             {tripMessage && (
                 <div className="route-control-message">{tripMessage}</div>
             )}
-
-            {children && <div className="route-control-trip-options">{children}</div>}
 
             <details className="route-control-manual">
                 <summary>Explorar una ruta manualmente</summary>
@@ -259,6 +303,8 @@ export default function RouteControlPanel({
                     ))}
                 </select>
             </details>
+
+            {children && <div className="route-control-trip-options">{children}</div>}
         </section>
     );
 }

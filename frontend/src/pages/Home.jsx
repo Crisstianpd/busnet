@@ -48,6 +48,7 @@ export default function Home() {
     const [activeLocationField, setActiveLocationField] = useState(null);
     const [selectionMode, setSelectionMode] = useState(null);
     const [allowMapDestinationSelection, setAllowMapDestinationSelection] = useState(false);
+    const [tripCleanupToken, setTripCleanupToken] = useState(0);
     const [routeCalculated, setRouteCalculated] = useState(false);
     const [plan, setPlan] = useState(null);
     const [selectedPlanOption, setSelectedPlanOption] = useState(null);
@@ -208,6 +209,7 @@ export default function Home() {
     }, [searchQuery]);
 
     const resetCalculatedTrip = useCallback(() => {
+        setTripCleanupToken(value => value + 1);
         setPlanningError("");
         setTripMessage("");
         setPlan(null);
@@ -281,6 +283,7 @@ export default function Home() {
         setPlanningError("");
         setTripMessage("");
         setPlanning(true);
+        setTripCleanupToken(value => value + 1);
 
         try {
             const result = await planTrip(selectedOrigin, destination);
@@ -305,8 +308,16 @@ export default function Home() {
     }, [destination, locationError, locationLoading, selectedOrigin]);
 
     async function handlePlanOptionSelect(option) {
+        if (
+            planOptionKey(option) ===
+            planOptionKey(selectedPlanOption)
+        ) {
+            return;
+        }
+
         try {
             setPlanningError("");
+            setTripCleanupToken(value => value + 1);
             setSelectedPlanOption(option);
             setSelectedRoute("");
             setGeojson(null);
@@ -447,6 +458,7 @@ export default function Home() {
     }
 
     function handleCancelTrip() {
+        setTripCleanupToken(value => value + 1);
         setSelectedPlace(null);
         setSelectedOrigin(null);
         setOriginLabel("");
@@ -677,6 +689,7 @@ export default function Home() {
                 selectionMode={selectionMode}
                 onMapPointSelected={handleMapPointSelected}
                 planOption={selectedPlanOption}
+                tripCleanupToken={tripCleanupToken}
                 communityReports={visibleCommunityReports}
                 animationsEnabled={animationsEnabled}
                 resolvedTheme={resolvedTheme}

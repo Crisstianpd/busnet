@@ -16,7 +16,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const EL_SALVADOR_BBOX = [-90.15, 13.0, -87.55, 14.6];
 
 // Carpeta donde se encuentran los GeoJSON
@@ -119,7 +119,11 @@ function runTripPlaceholder({ origin, destination }) {
     console.log("🏁 Destino:", destination);
 }
 
+const normalizationStartedAt = performance.now();
 const normalizedRoutes = normalizeRoutes(routes);
+const normalizationDurationMilliseconds = Number(
+    (performance.now() - normalizationStartedAt).toFixed(2)
+);
 const normalizedRoutesById = new Map(
     normalizedRoutes.map(route => [
         route.route.toLowerCase(),
@@ -220,6 +224,11 @@ app.post("/plan", (req, res) => {
         routes: normalizedRoutes,
         options: validatedRequest.options
     });
+
+    if (result.search?.performance) {
+        result.search.performance.normalizationStartupMilliseconds =
+            normalizationDurationMilliseconds;
+    }
 
     if (!result.bestOption) {
         return res.status(404).json({
@@ -340,6 +349,6 @@ app.post("/trip/start", (req, res) => {
 // =========================================
 
 app.listen(PORT, () => {
-    console.log(`\n🚍 BusNET Backend iniciado con éxito`);
-    console.log(`🔗 Local: http://localhost:${PORT}`);
+    console.log(`🚍 BusNET Backend iniciado con éxito`);
+    console.log(`🔗 Puerto: ${PORT}`);
 });
