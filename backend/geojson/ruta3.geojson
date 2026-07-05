@@ -3,7 +3,7 @@
     "properties": {
         "route": "3",
         "name": "Ruta 3",
-        "color": "#1E88E5",
+        "color": "#FF3366",
         "direction":"ida"
     },
     "features": [

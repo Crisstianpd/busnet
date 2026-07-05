@@ -33,7 +33,7 @@ export default function MapView({
     useEffect(() => {
         const map = new maplibregl.Map({
             container: mapContainer.current,
-            style: "https://tiles.openfreemap.org/styles/liberty",
+            style: "https://tiles.openfreemap.org/styles/dark",
             center: [-89.2182, 13.6929],
             zoom: 12
         });

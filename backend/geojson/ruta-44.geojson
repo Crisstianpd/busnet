@@ -3,7 +3,7 @@
 	"properties": {
 		"route": "44",
 		"nase": "Ruta 44",
-		"color": "#143a78"
+        "color": "#00FF66"
 	},
     "features": [
         {

@@ -1,9 +1,9 @@
 {
     "type": "FeatureCollection",
     "properties": {
-        "route": "30",
-        "name": "Ruta 30",
-        "color": "#FF00A8"
+        "route": "30-B",
+        "name": "Ruta 30-B",
+        "color": "#FF4DFF"
     },
     "features": [
         {
