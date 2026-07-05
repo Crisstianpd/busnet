@@ -1,0 +1,41 @@
+/* ============================================================
+   BusNET · Radii & elevation tokens
+   Friendly rounding (12–16px). Bottom sheets 24px top corners.
+   Soft, diffuse shadows on the dark map + colored glows for
+   active/premium accents.
+   ============================================================ */
+
+:root {
+  /* Corner radii */
+  --radius-sm: 8px;      /* chips, badges */
+  --radius-md: 12px;     /* buttons, inputs, small cards */
+  --radius-lg: 16px;     /* cards, list rows */
+  --radius-xl: 20px;     /* prominent cards */
+  --radius-sheet: 24px;  /* bottom sheet top corners */
+  --radius-pill: 999px;  /* pills, route badges, avatars */
+
+  /* Elevation — soft shadows over the night map */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.34);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.42);
+  --shadow-sheet: 0 -12px 40px rgba(0, 0, 0, 0.48);   /* cast upward from sheet */
+  --shadow-marker: 0 4px 10px rgba(0, 0, 0, 0.45);    /* bus/stop markers */
+
+  /* Accent glows */
+  --glow-green: 0 0 0 3px var(--busnet-green-glow);
+  --glow-amber: 0 0 0 3px var(--amber-glow);
+  --glow-red: 0 0 0 3px var(--red-glow);
+  --glow-premium: 0 0 20px rgba(255, 176, 32, 0.35);
+
+  /* Blur for glass panels floating over the map */
+  --blur-panel: blur(16px);   /* @kind other */
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0.0, 0.2, 1);   /* @kind other */
+  --ease-emphasized: cubic-bezier(0.2, 0.0, 0.0, 1); /* @kind other */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);  /* @kind other */ /* sheet snap, marker pop */
+  --dur-fast: 120ms;   /* @kind other */
+  --dur-base: 200ms;   /* @kind other */
+  --dur-slow: 320ms;   /* @kind other */
+  --dur-sheet: 360ms;  /* @kind other */
+}

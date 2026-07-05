@@ -1,0 +1,54 @@
+<!-- @dsCard group="Brand" viewport="720x760" name="Splash / branding" subtitle="Pantalla de marca para el pitch — logo, tagline, mapa vivo" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--night); font-family: var(--font-display); overflow: hidden; }
+  .stage { position: relative; width: 100%; height: 760px; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(120% 80% at 50% 40%, #14233d 0%, #0B1220 60%); }
+  .routes { position: absolute; inset: 0; }
+  .routes path { fill: none; stroke-linecap: round; stroke-dasharray: 900; stroke-dashoffset: 900;
+    animation: draw 3.2s var(--ease-emphasized) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .center { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .badge { width: 108px; height: 108px; border-radius: 30px; background: var(--busnet-green);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 60px rgba(0,210,106,0.35);
+    animation: pop 0.7s var(--ease-spring) both; }
+  .badge img { width: 78px; }
+  .wm { margin-top: 26px; font-size: 46px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary);
+    animation: rise 0.7s var(--ease-emphasized) 0.15s both; }
+  .wm b { color: var(--busnet-green); }
+  .tag { margin-top: 12px; font-family: var(--font-ui); font-size: 17px; font-weight: 600; color: var(--text-secondary);
+    animation: rise 0.7s var(--ease-emphasized) 0.3s both; }
+  .live { margin-top: 30px; display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px;
+    background: rgba(0,210,106,0.14); color: var(--busnet-green); font-family: var(--font-ui); font-size: 13px; font-weight: 800;
+    letter-spacing: 0.06em; text-transform: uppercase; animation: rise 0.7s var(--ease-emphasized) 0.45s both; }
+  .live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--busnet-green); animation: pulse 1.4s infinite; }
+  @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes rise { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0,210,106,0.55); } 70% { box-shadow: 0 0 0 8px rgba(0,210,106,0); } 100% { box-shadow: 0 0 0 0 rgba(0,210,106,0); } }
+  .foot { position: absolute; bottom: 34px; left: 0; right: 0; text-align: center; font-family: var(--font-ui);
+    font-size: 13px; color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <svg class="routes" viewBox="0 0 720 760" preserveAspectRatio="xMidYMid slice">
+    <path d="M-20,180 C160,120 240,300 420,240 S620,120 740,200" stroke="var(--route-1)" stroke-width="4" opacity="0.75" style="animation-delay:.1s" />
+    <path d="M-20,520 C120,560 260,440 420,520 S640,600 740,540" stroke="var(--route-6)" stroke-width="4" opacity="0.6" style="animation-delay:.4s" />
+    <path d="M120,-20 C160,180 60,340 200,460 S180,700 260,780" stroke="var(--route-4)" stroke-width="3.5" opacity="0.5" style="animation-delay:.7s" />
+    <path d="M560,-20 C520,160 640,320 520,460 S560,700 480,780" stroke="var(--route-3)" stroke-width="3.5" opacity="0.5" style="animation-delay:.9s" />
+  </svg>
+  <div class="center">
+    <div class="badge"><img src="../assets/logo/busnet-badge.svg" /></div>
+    <div class="wm">Bus<b>NET</b></div>
+    <div class="tag">Tu bus, en tiempo real.</div>
+    <div class="live"><span class="dot"></span> El transporte de El Salvador, digital</div>
+  </div>
+  <div class="foot">Trip planning · Tracking en vivo · Fleet para gremiales</div>
+</div>
+</body>
+</html>

@@ -126,7 +126,7 @@ export default function RouteControlPanel({
                         type="search"
                         value={searchQuery}
                         placeholder={
-                            destinationLabel || "Busca un lugar o selecciónalo en el mapa"
+                            destinationLabel || "Busca destino o elige en mapa"
                         }
                         onChange={onSearchChange}
                         onFocus={onDestinationFocus}

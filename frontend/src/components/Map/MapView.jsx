@@ -25,11 +25,19 @@ function toLngLat(location) {
     return [location.longitude, location.latitude];
 }
 
+function tokenValue(name) {
+    if (typeof document === "undefined") return `var(${name})`;
+
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim() || `var(${name})`;
+}
+
 function getRouteColor(geojson) {
     return (
         geojson?.properties?.color ||
         geojson?.features?.[0]?.properties?.color ||
-        "#2563EB"
+        tokenValue("--info")
     );
 }
 
@@ -113,11 +121,17 @@ function createJourneyMarkerElement(type, label) {
     return element;
 }
 
-const communitySeverityColors = {
-    low: "#22C55E",
-    medium: "#FACC15",
-    high: "#EF4444"
+const communitySeverityTokens = {
+    low: "--busnet-green",
+    medium: "--amber",
+    high: "--red"
 };
+
+function communitySeverityColor(severity) {
+    return tokenValue(
+        communitySeverityTokens[severity] ?? "--text-secondary"
+    );
+}
 
 const communityTypeLabels = {
     traffic: "Tráfico",
@@ -158,11 +172,11 @@ function createCommunityPopup(report) {
         "Tráfico reportado por la comunidad. Información aproximada y no oficial.";
 
     details.style.marginTop = "4px";
-    details.style.color = "#475569";
+    details.style.color = "var(--text-secondary)";
     description.style.marginTop = "7px";
     disclaimer.style.display = "block";
     disclaimer.style.marginTop = "8px";
-    disclaimer.style.color = "#64748B";
+    disclaimer.style.color = "var(--text-tertiary)";
 
     container.append(title, details, description, disclaimer);
 
@@ -351,7 +365,7 @@ export default function MapView({
 
         if (!originMarkerRef.current) {
             originMarkerRef.current = new maplibregl.Marker({
-                color: "#2563EB"
+                color: tokenValue("--info")
             })
                 .setLngLat(toLngLat(location))
                 .setPopup(new maplibregl.Popup().setText("Tu ubicación"))
@@ -392,7 +406,7 @@ export default function MapView({
 
         if (!destinationMarkerRef.current) {
             destinationMarkerRef.current = new maplibregl.Marker({
-                color: "#DC2626"
+                color: tokenValue("--amber")
             })
                 .setLngLat(toLngLat(destination))
                 .setPopup(new maplibregl.Popup().setText("Destino"))
@@ -431,7 +445,7 @@ export default function MapView({
                     type: "FeatureCollection",
                     properties: {
                         name: "Recorrido caminando",
-                        color: "#08A6C9",
+                        color: tokenValue("--info"),
                         walking: true
                     },
                     features: [{
@@ -519,8 +533,8 @@ export default function MapView({
                         "text-opacity": ["get", "renderOpacity"],
                         "text-halo-color":
                             resolvedTheme === "dark"
-                                ? "#07101D"
-                                : "#FFFFFF",
+                                ? tokenValue("--night")
+                                : tokenValue("--text-primary"),
                         "text-halo-width": 1.25
                     }
                 });
@@ -711,9 +725,7 @@ export default function MapView({
                         id: report.id,
                         severity: report.severity,
                         radiusMeters: report.radiusMeters,
-                        color:
-                            communitySeverityColors[report.severity] ??
-                            "#94A3B8"
+                        color: communitySeverityColor(report.severity)
                     },
                     geometry: {
                         type: "Point",
@@ -774,12 +786,11 @@ export default function MapView({
                 element.style.width = "18px";
                 element.style.height = "18px";
                 element.style.borderRadius = "50%";
-                element.style.border = "3px solid #FFFFFF";
-                element.style.background =
-                    communitySeverityColors[report.severity] ??
-                    "#94A3B8";
-                element.style.boxShadow =
-                    "0 3px 12px rgba(15, 23, 42, 0.4)";
+                element.style.border = "3px solid var(--text-primary)";
+                element.style.background = communitySeverityColor(
+                    report.severity
+                );
+                element.style.boxShadow = "var(--shadow-marker)";
                 element.style.cursor = "pointer";
                 element.addEventListener(
                     "click",
@@ -852,7 +863,7 @@ export default function MapView({
 
             points.push({
                 location: transfer.fromPoint,
-                color: "#7C3AED",
+                color: tokenValue("--route-3"),
                 type: "transfer",
                 label: "Punto de transbordo aproximado"
             });
@@ -866,7 +877,7 @@ export default function MapView({
             ) {
                 points.push({
                     location: transfer.toPoint,
-                    color: "#A855F7",
+                    color: tokenValue("--route-3-return"),
                     type: "transfer",
                     label: "Continuación del transbordo aproximado"
                 });

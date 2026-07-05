@@ -3,7 +3,34 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #0a1019;
+    background:
+        radial-gradient(circle at 72% 18%, var(--surface-raised), transparent 34%),
+        linear-gradient(180deg, var(--night), var(--night));
+}
+
+.busnet-map-shell::after {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    content: "";
+    pointer-events: none;
+    opacity: 0.28;
+    background-image:
+        linear-gradient(26deg, transparent 48%, var(--hairline) 49%, var(--hairline) 51%, transparent 52%),
+        linear-gradient(151deg, transparent 47%, var(--hairline) 48%, var(--hairline) 50%, transparent 51%),
+        linear-gradient(90deg, transparent 49%, var(--hairline) 50%, transparent 51%),
+        linear-gradient(0deg, transparent 49%, var(--hairline) 50%, transparent 51%);
+    background-position:
+        0 20px,
+        20px 0,
+        0 0,
+        0 0;
+    background-size:
+        220px 180px,
+        180px 220px,
+        118px 118px,
+        136px 136px;
+    mask-image: linear-gradient(180deg, transparent 0, var(--night) 18%, var(--night) 82%, transparent 100%);
 }
 
 .busnet-map-canvas {
@@ -17,11 +44,13 @@
     z-index: 20;
     display: grid;
     place-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
+    background: color-mix(in srgb, var(--night) 48%, transparent);
+    color: var(--text-primary);
     opacity: 1;
     pointer-events: none;
-    transition: opacity 380ms ease, visibility 380ms ease;
+    transition:
+        opacity var(--dur-slow) var(--ease-standard),
+        visibility var(--dur-slow) var(--ease-standard);
 }
 
 .busnet-map-loading.is-ready {
@@ -32,24 +61,28 @@
 .busnet-map-loader {
     display: grid;
     justify-items: center;
-    gap: 10px;
-    font: 800 0.74rem "Nunito Sans", sans-serif;
-    letter-spacing: 0.08em;
+    gap: var(--space-3);
+    font-family: var(--font-ui);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-label);
     text-transform: uppercase;
 }
 
 .busnet-map-loader::before {
     width: 34px;
     height: 34px;
-    border: 3px solid rgba(255, 255, 255, 0.28);
-    border-top-color: #57c4ff;
+    border: 3px solid var(--hairline-strong);
+    border-top-color: var(--busnet-green);
     border-radius: 50%;
     content: "";
     animation: busnet-map-spin 0.8s linear infinite;
 }
 
 .busnet-map-marker {
-    transition: opacity 170ms ease, transform 170ms ease;
+    transition:
+        opacity var(--dur-fast) var(--ease-standard),
+        transform var(--dur-fast) var(--ease-standard);
 }
 
 .busnet-map-marker.is-entering,
@@ -58,100 +91,95 @@
     transform: translateY(8px) scale(0.72);
 }
 
-.busnet-transfer-stop {
+.busnet-transfer-stop,
+.busnet-journey-marker {
     display: grid;
-    width: 30px;
-    height: 30px;
     place-items: center;
-    border: 2px solid #fff;
-    border-radius: 9px;
-    padding: 5px;
-    background: #1678e8;
-    color: #fff;
-    box-shadow: 0 5px 15px rgba(14, 59, 105, 0.34);
+    border: 2px solid var(--text-primary);
+    color: var(--text-on-green);
+    box-shadow: var(--shadow-marker);
     cursor: pointer;
+}
+
+.busnet-transfer-stop {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    padding: 5px;
+    background: var(--busnet-green);
+}
+
+.busnet-transfer-stop svg,
+.busnet-journey-marker svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .busnet-transfer-stop svg {
     width: 18px;
     height: 18px;
-    fill: none;
-    stroke: currentColor;
     stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-[data-theme="dark"] .busnet-transfer-stop {
-    border-color: #bfe5ff;
-    background: #1d8df0;
-    box-shadow: 0 5px 17px rgba(0, 0, 0, 0.5);
 }
 
 .busnet-journey-marker {
-    display: grid;
-    min-width: 42px;
-    height: 42px;
-    place-items: center;
-    border: 2px solid #fff;
-    border-radius: 14px 14px 14px 4px;
+    min-width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
     padding: 5px 7px 4px;
-    color: #fff;
-    box-shadow: 0 7px 18px rgba(15, 48, 83, 0.32);
-    cursor: pointer;
 }
 
 .busnet-journey-marker.is-boarding {
-    background: #0878d7;
+    background: var(--busnet-green);
 }
 
 .busnet-journey-marker.is-arrival {
-    border-radius: 14px 14px 4px 14px;
-    background: #e6502c;
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-sm) var(--radius-lg);
+    background: var(--amber);
+    color: var(--text-on-amber);
 }
 
 .busnet-journey-marker svg {
     width: 19px;
     height: 19px;
-    fill: none;
-    stroke: currentColor;
     stroke-width: 1.9;
-    stroke-linecap: round;
-    stroke-linejoin: round;
 }
 
 .busnet-journey-marker span {
-    font: 900 0.5rem "Nunito Sans", sans-serif;
-    letter-spacing: 0.02em;
+    font-family: var(--font-display);
+    font-size: 8px;
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-normal);
     line-height: 1;
     text-transform: uppercase;
 }
 
-[data-theme="dark"] .busnet-journey-marker {
-    border-color: #ccecff;
-    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="dark"] .busnet-journey-marker.is-boarding {
-    background: #168de8;
-}
-
-[data-theme="dark"] .busnet-journey-marker.is-arrival {
-    border-color: #ffd4c7;
-    background: #f06542;
-}
-
 .busnet-route-label .maplibregl-popup-content {
-    border: 2px solid var(--route-color, #1377e8);
-    border-radius: 999px;
-    padding: 5px 9px;
-    color: #18273b;
-    font: 900 0.7rem "Nunito Sans", sans-serif;
-    box-shadow: 0 7px 20px rgba(13, 39, 68, 0.2);
+    border: 2px solid var(--route-color, var(--busnet-green));
+    border-radius: var(--radius-pill);
+    padding: var(--space-1) var(--space-2);
+    color: var(--ui-text);
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-extrabold);
+    box-shadow: var(--shadow-md);
 }
 
 .busnet-route-label .maplibregl-popup-tip {
     display: none;
+}
+
+.maplibregl-ctrl-group {
+    overflow: hidden;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-md);
+}
+
+.maplibregl-ctrl-group button {
+    background-color: var(--surface-raised);
 }
 
 @keyframes busnet-map-spin {

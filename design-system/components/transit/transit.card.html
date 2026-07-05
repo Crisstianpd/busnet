@@ -1,0 +1,59 @@
+<!-- @dsCard group="Components" viewport="700x420" name="TripCard · StepItem · BusMarker · MapPin" subtitle="The transit core: trip options, turn-by-turn, map markers" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; background: var(--night); font-family: var(--font-ui); padding: 24px; }
+  .wrap { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .markers { display: flex; align-items: center; gap: 28px; padding: 20px 8px 8px; }
+  .pins { display: flex; align-items: flex-end; gap: 28px; padding: 8px; }
+  h4 { color: var(--text-tertiary); font-size: 11px; font-weight: 800; letter-spacing:.06em; text-transform:uppercase; margin: 0 0 4px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { TripCard, StepItem, BusMarker, MapPin } = window.BusNETDesignSystem_abb9a1;
+  function Demo() {
+    return (
+      <div>
+        <div className="wrap">
+          <div className="col">
+            <TripCard recommended totalMinutes={42} fare="$0.50"
+              departLabel="Sale en 3 min · cada 12 min"
+              legs={[{type:"walk",minutes:4},{type:"bus",route:"30B",color:"var(--route-1)"},{type:"bus",route:"7D",color:"var(--route-6)"}]} />
+            <TripCard totalMinutes={51} fare="$0.35"
+              legs={[{type:"walk",minutes:7},{type:"bus",route:"42",color:"var(--route-4)"}]} />
+          </div>
+          <div className="col" style={{paddingTop:4}}>
+            <StepItem type="origin" title="Tu ubicación" />
+            <StepItem type="walk" title="Camina hasta la parada" detail="Metrocentro, sobre Alameda Juan Pablo II" duration="4 min · 450 m" />
+            <StepItem type="bus" route="30B" routeColor="var(--route-1)" title="Toma la ruta 30B" detail="Cada ~12 min · 6 paradas" duration="18 min" active />
+            <StepItem type="transfer" title="Transbordo a la 7D" detail="Camina 120 m a la siguiente parada" duration="2 min" />
+            <StepItem type="destination" title="Hospital Bloom" last />
+          </div>
+        </div>
+        <div className="markers">
+          <div style={{textAlign:"center"}}><h4>Movimiento</h4><BusMarker route="30B" color="var(--route-1)" bearing={45} state="moving" /></div>
+          <div style={{textAlign:"center"}}><h4>Detenido</h4><BusMarker route="7D" color="var(--route-6)" state="stopped" /></div>
+          <div style={{textAlign:"center"}}><h4>Seleccionado</h4><BusMarker route="42" color="var(--route-4)" state="selected" /></div>
+          <div className="pins">
+            <MapPin variant="origin" label="Tú" />
+            <MapPin variant="stop" />
+            <MapPin variant="destination" label="Bloom" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>
+</body>
+</html>
