@@ -1,5 +1,10 @@
 {
     "type": "FeatureCollection",
+    "properties": {
+        "route": "2-C",
+        "name": "Ruta 2-C",
+        "color": "#FF2D95"
+    },
     "features": [
         {
             "type": "Feature",
