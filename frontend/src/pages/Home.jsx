@@ -24,6 +24,7 @@ export default function Home() {
     const [selectedPlace, setSelectedPlace] = useState(null);
     const [destination, setDestination] = useState(null);
     const [plan, setPlan] = useState(null);
+    const [selectedPlanOption, setSelectedPlanOption] = useState(null);
     const [plannedGeojsons, setPlannedGeojsons] = useState([]);
     const [planning, setPlanning] = useState(false);
     const [planningError, setPlanningError] = useState("");
@@ -68,6 +69,7 @@ export default function Home() {
         setDestination(coordinates);
         setPlanningError("");
         setPlan(null);
+        setSelectedPlanOption(null);
         setPlannedGeojsons([]);
 
         if (!location) {
@@ -84,12 +86,13 @@ export default function Home() {
         try {
             const result = await planTrip(location, coordinates);
             const routeGeojsons = await Promise.all(
-                result.bestOption.routes.map(getRoute)
+                (result.bestOption.routes ?? []).map(getRoute)
             );
 
             setSelectedRoute("");
             setGeojson(null);
             setPlan(result);
+            setSelectedPlanOption(result.bestOption);
             setPlannedGeojsons(routeGeojsons);
         }
         catch (error) {
@@ -100,11 +103,27 @@ export default function Home() {
         }
     }, [location, locationError, locationLoading]);
 
+    async function handlePlanOptionSelect(option) {
+        try {
+            setPlanningError("");
+            setSelectedPlanOption(option);
+            setSelectedRoute("");
+            setGeojson(null);
+            setPlannedGeojsons(
+                await Promise.all((option.routes ?? []).map(getRoute))
+            );
+        }
+        catch (error) {
+            setPlanningError(error.message);
+        }
+    }
+
     async function handleRouteChange(event) {
         const route = event.target.value;
 
         setSelectedRoute(route);
         setPlan(null);
+        setSelectedPlanOption(null);
         setPlannedGeojsons([]);
 
         if (!route) {
@@ -230,6 +249,8 @@ export default function Home() {
                     plan={plan}
                     loading={planning}
                     error={planningError}
+                    selectedOption={selectedPlanOption}
+                    onSelectOption={handlePlanOptionSelect}
                 />
             </div>
 
@@ -238,7 +259,7 @@ export default function Home() {
                 plannedGeojsons={plannedGeojsons}
                 location={location}
                 destination={destination}
-                plan={plan}
+                planOption={selectedPlanOption}
                 onDestinationSelect={handleDestinationSelect}
             />
         </div>
