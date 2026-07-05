@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
 	"properties": {
 		"route": "140-7",
-		"nase": "Ruta 140-7",
+		"name": "Ruta 140-7",
         "color": "#FF00B8"
 	},
     "features": [
@@ -2489,6 +2489,7 @@
                 "Código_de": "MB140X7",
                 "Nombre_de_": "140-7",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR MICROBUSES",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -4895,6 +4896,7 @@
                 "Código_de": "MB140X7",
                 "Nombre_de_": "140-7",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR MICROBUSES",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

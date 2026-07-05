@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
     "properties": {
 	    "route": "9",
-	    "nase": "Ruta 9",
+	    "name": "Ruta 9",
         "color": "#FF6A00"
     },
     "features": [
@@ -1624,6 +1624,7 @@
                 "Código_de": "AB009X0",
                 "Nombre_de_": "9",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -3305,6 +3306,7 @@
                 "Código_de": "AB009X0",
                 "Nombre_de_": "9",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

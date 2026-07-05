@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdatedAt": "2026-07-05T03:08:09.617Z",
+  "lastUpdatedAt": "2026-07-05T04:49:19.988Z",
   "reports": [
     {
       "id": "c687b1c4-ba6c-4bb0-aee7-e1e41e50303b",
@@ -13,6 +13,20 @@
       "routeId": null,
       "createdAt": "2026-07-05T03:08:09.616Z",
       "expiresAt": "2026-07-05T05:08:09.616Z",
+      "source": "community",
+      "status": "active"
+    },
+    {
+      "id": "4b98cf50-5d9b-4e82-a256-15c19448b51c",
+      "type": "accident",
+      "severity": "high",
+      "description": "choque",
+      "latitude": 13.701571581062112,
+      "longitude": -89.1591484591167,
+      "radiusMeters": 150,
+      "routeId": null,
+      "createdAt": "2026-07-05T04:49:19.982Z",
+      "expiresAt": "2026-07-05T06:49:19.982Z",
       "source": "community",
       "status": "active"
     }

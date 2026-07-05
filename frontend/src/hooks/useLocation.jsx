@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function useLocation() {
     const isGeolocationSupported = "geolocation" in navigator;
@@ -10,33 +10,50 @@ export default function useLocation() {
             : "Tu navegador no soporta geolocalización."
     );
 
-    useEffect(() => {
-        if (!isGeolocationSupported) return;
+    const requestLocation = useCallback(() => {
+        if (!isGeolocationSupported) {
+            setError("Tu navegador no soporta geolocalización.");
+            return Promise.resolve(null);
+        }
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setLocation({
+        setLoading(true);
+        setError(null);
+        return new Promise(resolve => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const nextLocation = {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
-                });
+                    };
 
-                setLoading(false);
-            },
-            (err) => {
-                setError(err.message);
-                setLoading(false);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0,
-            }
-        );
+                    setLocation(nextLocation);
+                    setLoading(false);
+                    resolve(nextLocation);
+                },
+                (err) => {
+                    setError(err.message);
+                    setLoading(false);
+                    resolve(null);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                }
+            );
+        });
     }, [isGeolocationSupported]);
+
+    useEffect(() => {
+        const timeoutId = setTimeout(requestLocation, 0);
+
+        return () => clearTimeout(timeoutId);
+    }, [requestLocation]);
 
     return {
         location,
         loading,
         error,
+        requestLocation,
     };
 }

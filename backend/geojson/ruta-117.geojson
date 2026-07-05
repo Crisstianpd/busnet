@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
 	"properties": {
 		"route": "117",
-		"nase": "Ruta 117",
+		"name": "Ruta 117",
         "color": "#00FFE1"
 	},
     "features": [
@@ -2804,6 +2804,7 @@
                 "Código_de": "AB117X0SS",
                 "Nombre_de_": "117",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "INTERURBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -5420,6 +5421,7 @@
                 "Código_de": "AB117X0SS",
                 "Nombre_de_": "117",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "INTERURBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

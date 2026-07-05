@@ -1,13 +1,14 @@
 export const routingConfig = Object.freeze({
     initialRadiusMeters: 100,
     radiusIncrementMeters: 100,
-    maximumRadiusMeters: 1000,
-    walkThresholdMeters: 200,
-    directBoardingThresholdMeters: 200,
+    maximumRadiusMeters: 5000,
+    preferredWalkToRouteMeters: 200,
+    walkOnlyThresholdMeters: 200,
     maximumAlternatives: 4,
+    maximumBuses: 3,
     maximumTransfers: 2,
     maximumTransferWalkMeters: 200,
-    maximumSearchStates: 500
+    maximumSearchStates: 5000
 });
 
 export function resolveRoutingConfig(options = {}) {
@@ -19,12 +20,19 @@ export function resolveRoutingConfig(options = {}) {
         maximumRadiusMeters:
             Number.isFinite(maximumRadiusMeters) &&
             maximumRadiusMeters >= routingConfig.initialRadiusMeters
-                ? Math.min(maximumRadiusMeters, 5000)
+                ? Math.min(
+                    maximumRadiusMeters,
+                    routingConfig.maximumRadiusMeters
+                )
                 : routingConfig.maximumRadiusMeters,
         maximumTransfers:
             Number.isInteger(maximumTransfers) &&
             maximumTransfers >= 0
-                ? Math.min(maximumTransfers, routingConfig.maximumTransfers)
+                ? Math.min(
+                    maximumTransfers,
+                    routingConfig.maximumTransfers,
+                    routingConfig.maximumBuses - 1
+                )
                 : routingConfig.maximumTransfers
     };
 }

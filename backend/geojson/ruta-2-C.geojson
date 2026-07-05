@@ -1,5 +1,9 @@
 {
     "type": "FeatureCollection",
+    "properties": {
+        "route": "2-C",
+        "name": "Ruta 2-C"
+    },
     "features": [
         {
             "type": "Feature",
@@ -964,6 +968,7 @@
                 "Código_de": "AB002C0",
                 "Nombre_de_": "2-C",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -1795,6 +1800,7 @@
                 "Código_de": "AB002C0",
                 "Nombre_de_": "2-C",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
 	"properties": {
 		"route": "44",
-		"nase": "Ruta 44",
+		"name": "Ruta 44",
         "color": "#00FF66"
 	},
     "features": [
@@ -1119,6 +1119,7 @@
                 "Código_de": "AB044X1",
                 "Nombre_de_": "44",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -2260,6 +2261,7 @@
                 "Código_de": "AB044X1",
                 "Nombre_de_": "44",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

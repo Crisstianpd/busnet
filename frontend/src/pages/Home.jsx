@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import MapView from "../components/Map/MapView";
 import TrafficPanel from "../components/Traffic/TrafficPanel";
+import RouteControlPanel from "../components/Trip/RouteControlPanel";
 import TripOptions from "../components/Trip/TripOptions";
+import ThemeToggle from "../components/UI/ThemeToggle";
+import useAnimationsPreference from "../hooks/useAnimationsPreference";
 import useLocation from "../hooks/useLocation";
+import useTheme from "../hooks/useTheme";
 import {
     analyzeCommunityTrafficPlan,
     createCommunityTrafficReport,
@@ -21,11 +25,16 @@ function planOptionKey(option) {
 }
 
 export default function Home() {
+    const showLegacySearchPanel = false;
     const {
         location,
         loading: locationLoading,
-        error: locationError
+        error: locationError,
+        requestLocation
     } = useLocation();
+    const { animationsEnabled, toggleAnimations } =
+        useAnimationsPreference();
+    const { theme, resolvedTheme, setTheme } = useTheme();
     const [routes, setRoutes] = useState([]);
     const [selectedRoute, setSelectedRoute] = useState("");
     const [geojson, setGeojson] = useState(null);
@@ -33,8 +42,12 @@ export default function Home() {
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [selectedPlace, setSelectedPlace] = useState(null);
+    const [selectedOrigin, setSelectedOrigin] = useState(null);
+    const [originLabel, setOriginLabel] = useState("");
     const [destination, setDestination] = useState(null);
     const [destinationLabel, setDestinationLabel] = useState("");
+    const [activeLocationField, setActiveLocationField] = useState(null);
+    const [selectionMode, setSelectionMode] = useState(null);
     const [allowMapDestinationSelection, setAllowMapDestinationSelection] = useState(false);
     const [routeCalculated, setRouteCalculated] = useState(false);
     const [plan, setPlan] = useState(null);
@@ -54,13 +67,39 @@ export default function Home() {
     const [reportLocation, setReportLocation] = useState(null);
     const [selectingReportLocation, setSelectingReportLocation] =
         useState(false);
+    const [communityFilter, setCommunityFilter] = useState("all");
     const communityAnalysisRequestRef = useRef(0);
+
+    const visibleCommunityReports = communityFilter === "none"
+        ? []
+        : communityFilter === "all"
+            ? communityReports
+            : communityReports.filter(
+                report => report.severity === communityFilter
+            );
 
     useEffect(() => {
         getRoutes()
             .then(setRoutes)
             .catch(error => setPlanningError(error.message));
     }, []);
+
+    async function handleRequestLocation() {
+        setPlanningError("");
+        const nextLocation = await requestLocation();
+
+        if (nextLocation) {
+            setSelectedOrigin(nextLocation);
+            setOriginLabel("Usando tu ubicación actual");
+            setActiveLocationField(null);
+            setSelectionMode(null);
+            return;
+        }
+
+        setPlanningError(
+            "Si tu ubicación no se actualiza, recarga la página o revisa los permisos del navegador."
+        );
+    }
 
     const loadCommunityReports = useCallback(async () => {
         setCommunityLoading(true);
@@ -169,11 +208,7 @@ export default function Home() {
         };
     }, [searchQuery]);
 
-    const handleDestinationSelect = useCallback(coordinates => {
-        setDestination(coordinates);
-        setDestinationLabel("Punto seleccionado en el mapa");
-        setSelectedPlace(null);
-        setSearchResults([]);
+    const resetCalculatedTrip = useCallback(() => {
         setPlanningError("");
         setTripMessage("");
         setPlan(null);
@@ -182,12 +217,60 @@ export default function Home() {
         setRouteCalculated(false);
     }, []);
 
-    const handleCalculateRoute = useCallback(async () => {
-        if (!destination) {
+    const handleMapPointSelected = useCallback(coordinates => {
+        if (selectionMode === "origin") {
+            setSelectedOrigin(coordinates);
+            setOriginLabel("Punto seleccionado en el mapa");
+        }
+        else if (selectionMode === "destination") {
+            setDestination(coordinates);
+            setDestinationLabel("Punto seleccionado en el mapa");
+            setSearchQuery("");
+            setSelectedPlace(null);
+            setSearchResults([]);
+        }
+
+        setSelectionMode(null);
+        setActiveLocationField(null);
+        resetCalculatedTrip();
+    }, [resetCalculatedTrip, selectionMode]);
+
+    function handleUseCurrentLocation() {
+        if (!location) {
+            setPlanningError(
+                locationLoading
+                    ? "Estamos obteniendo tu ubicación actual…"
+                    : locationError || "No pudimos acceder al GPS. Selecciona el punto en el mapa."
+            );
             return;
         }
 
-        if (!location) {
+        setSelectedOrigin(location);
+        setOriginLabel("Usando tu ubicación actual");
+        setActiveLocationField(null);
+        setSelectionMode(null);
+        resetCalculatedTrip();
+    }
+
+    function handleSelectOnMap(mode) {
+        setSelectionMode(mode);
+        setActiveLocationField(null);
+        setSelectingReportLocation(false);
+        setPlanningError("");
+    }
+
+    const handleCalculateRoute = useCallback(async () => {
+        if (!selectedOrigin) {
+            setPlanningError("Selecciona punto inicial.");
+            return;
+        }
+
+        if (!destination) {
+            setPlanningError("Selecciona punto final.");
+            return;
+        }
+
+        if (!selectedOrigin) {
             setPlanningError(
                 locationLoading
                     ? "Esperando tu ubicación actual…"
@@ -201,7 +284,7 @@ export default function Home() {
         setPlanning(true);
 
         try {
-            const result = await planTrip(location, destination);
+            const result = await planTrip(selectedOrigin, destination);
             const routeGeojsons = await Promise.all(
                 (result.bestOption.routes ?? []).map(getRoute)
             );
@@ -220,7 +303,7 @@ export default function Home() {
         finally {
             setPlanning(false);
         }
-    }, [destination, location, locationError, locationLoading]);
+    }, [destination, locationError, locationLoading, selectedOrigin]);
 
     async function handlePlanOptionSelect(option) {
         try {
@@ -247,7 +330,8 @@ export default function Home() {
     function handleSelectReportLocationOnMap() {
         setReportLocation(null);
         setSelectingReportLocation(true);
-        setAllowMapDestinationSelection(false);
+        setSelectionMode(null);
+        setActiveLocationField(null);
     }
 
     function handleTrafficLocationSelect(coordinates) {
@@ -321,6 +405,8 @@ export default function Home() {
         setSearchResults([]);
         setDestination({ latitude, longitude });
         setDestinationLabel(place.title);
+        setActiveLocationField(null);
+        setSelectionMode(null);
         setPlan(null);
         setPlannedGeojsons([]);
         setPlanningError("");
@@ -333,7 +419,7 @@ export default function Home() {
             return;
         }
 
-        if (!location) {
+        if (!selectedOrigin) {
             setTripMessage(
                 locationLoading
                     ? "Esperando tu ubicación para iniciar el viaje…"
@@ -346,7 +432,7 @@ export default function Home() {
         setTripMessage("");
 
         try {
-            const response = await startTrip(location, {
+            const response = await startTrip(selectedOrigin, {
                 ...destination,
                 name: destinationLabel || selectedPlace?.title || "Destino seleccionado"
             });
@@ -363,6 +449,8 @@ export default function Home() {
 
     function handleCancelTrip() {
         setSelectedPlace(null);
+        setSelectedOrigin(null);
+        setOriginLabel("");
         setDestination(null);
         setDestinationLabel("");
         setSearchQuery("");
@@ -373,6 +461,8 @@ export default function Home() {
         setTripMessage("");
         setRouteCalculated(false);
         setStartingTrip(false);
+        setSelectionMode(null);
+        setActiveLocationField(null);
     }
 
     return (
@@ -383,7 +473,56 @@ export default function Home() {
                 position: "relative"
             }}
         >
-            <div className="search-panel">
+            <ThemeToggle theme={theme} onChange={setTheme} />
+
+            <RouteControlPanel
+                origin={selectedOrigin}
+                originLabel={originLabel}
+                destination={destination}
+                destinationLabel={destinationLabel}
+                activeField={activeLocationField}
+                selectionMode={selectionMode}
+                onOriginFocus={() => setActiveLocationField("origin")}
+                onDestinationFocus={() => setActiveLocationField("destination")}
+                onUseCurrentLocation={handleUseCurrentLocation}
+                onSelectOnMap={handleSelectOnMap}
+                onCancelMapSelection={() => setSelectionMode(null)}
+                searchQuery={searchQuery}
+                onSearchChange={handleSearchChange}
+                searchResults={searchResults}
+                searchLoading={searchLoading}
+                selectedPlace={selectedPlace}
+                onPlaceSelect={handlePlaceSelect}
+                planning={planning}
+                onCalculateRoute={handleCalculateRoute}
+                validationMessage={planningError}
+                routeCalculated={routeCalculated}
+                startingTrip={startingTrip}
+                onStartTrip={handleStartTrip}
+                onCancelTrip={handleCancelTrip}
+                tripMessage={tripMessage}
+                locationAvailable={Boolean(location)}
+                locationLoading={locationLoading}
+                onRequestLocation={handleRequestLocation}
+                animationsEnabled={animationsEnabled}
+                onToggleAnimations={toggleAnimations}
+                routes={routes}
+                selectedRoute={selectedRoute}
+                onRouteChange={handleRouteChange}
+            >
+                <TripOptions
+                    plan={plan}
+                    loading={planning}
+                    error={planningError}
+                    selectedOption={selectedPlanOption}
+                    onSelectOption={handlePlanOptionSelect}
+                    communityAnalysisByOption={communityAnalysisByOption}
+                    communityAnalysisLoading={communityAnalysisLoading}
+                />
+            </RouteControlPanel>
+
+            {showLegacySearchPanel && (
+            <div className="search-panel legacy-search-panel" aria-hidden="true">
                 <div className="search-header">
                     <div className="search-input-group">
                         <label className="search-label" htmlFor="place-search">
@@ -531,15 +670,19 @@ export default function Home() {
                     }
                 />
             </div>
+            )}
 
             <MapView
                 geojson={geojson}
                 plannedGeojsons={plannedGeojsons}
-                location={location}
-                destination={destination}
+                selectedOrigin={selectedOrigin}
+                selectedDestination={destination}
+                selectionMode={selectionMode}
+                onMapPointSelected={handleMapPointSelected}
                 planOption={selectedPlanOption}
-                onDestinationSelect={allowMapDestinationSelection ? handleDestinationSelect : null}
-                communityReports={communityReports}
+                communityReports={visibleCommunityReports}
+                animationsEnabled={animationsEnabled}
+                resolvedTheme={resolvedTheme}
                 onTrafficLocationSelect={
                     selectingReportLocation
                         ? handleTrafficLocationSelect
@@ -559,6 +702,8 @@ export default function Home() {
                 currentLocation={location}
                 reportLocation={reportLocation}
                 selectingOnMap={selectingReportLocation}
+                activeFilter={communityFilter}
+                onFilterChange={setCommunityFilter}
                 onUseCurrentLocation={handleUseCurrentReportLocation}
                 onSelectOnMap={handleSelectReportLocationOnMap}
                 onSubmitReport={handleCommunityReportSubmit}

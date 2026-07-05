@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 import {
     feature,
     featureCollection,
     lineString
 } from "@turf/turf";
+import { resolveRoutingConfig } from "../config/routing.js";
 import { normalizeRoutes } from "../services/geojsonNormalizer.js";
 import { planTrip } from "../services/routePlanner.js";
 
@@ -19,7 +21,27 @@ function createRoute(route, coordinates) {
     };
 }
 
-test("recomienda caminar cuando el destino está a menos de 200 metros", () => {
+function loadGeojsonRoute(fileName) {
+    const geojson = JSON.parse(
+        fs.readFileSync(
+            new URL(`../geojson/${fileName}`, import.meta.url),
+            "utf8"
+        )
+    );
+    const properties =
+        geojson.properties ??
+        geojson.features?.[0]?.properties ??
+        {};
+
+    return {
+        route: properties.route,
+        name: properties.name ?? `Ruta ${properties.route}`,
+        color: properties.color ?? "#1E88E5",
+        geojson
+    };
+}
+
+test("recomienda caminar cuando el destino está a 200 metros o menos", () => {
     const result = planTrip({
         origin: { latitude: 13.7, longitude: -89.2 },
         destination: { latitude: 13.701, longitude: -89.2 },
@@ -55,6 +77,69 @@ test("encuentra una ruta directa dentro del radio inicial", () => {
     assert.deepEqual(result.bestOption.routes, ["A"]);
     assert.equal(result.search.originRadiusMeters, 100);
     assert.equal(result.search.destinationRadiusMeters, 100);
+});
+
+test("el origen puede expandirse hasta un máximo de 5000 metros", () => {
+    const routes = normalizeRoutes([
+        createRoute("A", [
+            [-89.2, 13.7],
+            [-89.18, 13.7]
+        ])
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7445, longitude: -89.2 },
+        destination: { latitude: 13.7, longitude: -89.18 },
+        routes
+    });
+
+    assert.equal(result.search.originRadiusMeters, 5000);
+    assert.equal(result.search.destinationRadiusMeters, 100);
+    assert.equal(result.search.maximumRadiusMeters, 5000);
+});
+
+test("el destino puede expandirse hasta un máximo de 5000 metros", () => {
+    const routes = normalizeRoutes([
+        createRoute("A", [
+            [-89.2, 13.7],
+            [-89.18, 13.7]
+        ])
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7, longitude: -89.2 },
+        destination: { latitude: 13.7445, longitude: -89.18 },
+        routes
+    });
+
+    assert.equal(result.search.originRadiusMeters, 100);
+    assert.equal(result.search.destinationRadiusMeters, 5000);
+    assert.equal(result.search.maximumRadiusMeters, 5000);
+});
+
+test("limita maximumRadiusMeters solicitado a 5000 metros", () => {
+    const config = resolveRoutingConfig({
+        maximumRadiusMeters: 9000
+    });
+
+    assert.equal(config.maximumRadiusMeters, 5000);
+});
+
+test("no encuentra rutas que quedan fuera de 5000 metros", () => {
+    const routes = normalizeRoutes([
+        createRoute("Lejana", [
+            [-89.2, 13.7],
+            [-89.18, 13.7]
+        ])
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.746, longitude: -89.2 },
+        destination: { latitude: 13.746, longitude: -89.18 },
+        routes,
+        options: { maximumRadiusMeters: 9000 }
+    });
+
+    assert.equal(result.search.maximumRadiusMeters, 5000);
+    assert.equal(result.bestOption, null);
+    assert.deepEqual(result.alternatives, []);
 });
 
 test("prioriza una directa válida aunque un transbordo camine unos metros menos", () => {
@@ -417,6 +502,28 @@ test("encuentra una conexión con máximo dos transbordos", () => {
     assert.equal(result.bestOption.type, "transfer");
     assert.equal(result.bestOption.transferCount, 2);
     assert.deepEqual(result.bestOption.routes, ["A", "B", "C"]);
+    assert.equal(result.bestOption.transfers.length, 2);
+    assert.equal(
+        new Set(result.bestOption.routes).size,
+        result.bestOption.routes.length
+    );
+});
+
+test("conecta la Universidad de El Salvador con Tonacatepeque", () => {
+    const routes = normalizeRoutes([
+        loadGeojsonRoute("ruta3.geojson"),
+        loadGeojsonRoute("ruta-140.geojson"),
+        loadGeojsonRoute("ruta-190.geojson")
+    ]);
+    const result = planTrip({
+        origin: { latitude: 13.7183, longitude: -89.2030 },
+        destination: { latitude: 13.7811, longitude: -89.1186 },
+        routes
+    });
+
+    assert.equal(result.bestOption.type, "transfer");
+    assert.deepEqual(result.bestOption.routes, ["3", "140", "190"]);
+    assert.equal(result.bestOption.transferCount, 2);
     assert.equal(result.bestOption.transfers.length, 2);
     assert.equal(
         new Set(result.bestOption.routes).size,

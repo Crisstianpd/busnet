@@ -1,0 +1,237 @@
+:root {
+    --ui-panel: rgba(255, 255, 255, 0.97);
+    --ui-surface: #ffffff;
+    --ui-surface-soft: #f7fafc;
+    --ui-text: #16243a;
+    --ui-muted: #68778b;
+    --ui-border: #dce6f0;
+    --ui-shadow: rgba(32, 65, 98, 0.18);
+}
+
+[data-theme="dark"] {
+    --ui-panel: rgba(15, 24, 38, 0.97);
+    --ui-surface: #162235;
+    --ui-surface-soft: #1d2b40;
+    --ui-text: #eef6ff;
+    --ui-muted: #a8b7c9;
+    --ui-border: #34465d;
+    --ui-shadow: rgba(0, 0, 0, 0.42);
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 12px;
+    right: 58px;
+    z-index: 30;
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--ui-border);
+    border-radius: 50%;
+    padding: 0;
+    background: var(--ui-panel);
+    color: var(--ui-text);
+    box-shadow: 0 9px 25px var(--ui-shadow);
+    backdrop-filter: blur(14px);
+    cursor: pointer;
+    transition:
+        transform 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease;
+}
+
+.theme-toggle:hover {
+    transform: translateY(-1px);
+    border-color: #62b9ed;
+}
+
+.theme-toggle:focus-visible {
+    outline: 3px solid rgba(22, 120, 232, 0.28);
+    outline-offset: 2px;
+}
+
+.theme-toggle-icon {
+    display: grid;
+    width: 20px;
+    height: 20px;
+    place-items: center;
+    animation: theme-icon-in 260ms ease-out;
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+@keyframes theme-icon-in {
+    from {
+        opacity: 0;
+        transform: rotate(-35deg) scale(0.68);
+    }
+    to {
+        opacity: 1;
+        transform: rotate(0) scale(1);
+    }
+}
+
+[data-theme="dark"] body {
+    background: #080e17;
+}
+
+[data-theme="dark"] .route-control-panel,
+[data-theme="dark"] .community-panel,
+[data-theme="dark"] .community-dock {
+    border-color: var(--ui-border);
+    background: var(--ui-panel);
+    color: var(--ui-text);
+    box-shadow: 0 22px 55px var(--ui-shadow);
+}
+
+[data-theme="dark"] .route-control-brand h1,
+[data-theme="dark"] .community-header h2 {
+    color: var(--ui-text);
+}
+
+[data-theme="dark"] .route-control-field input,
+[data-theme="dark"] .route-control-manual select,
+[data-theme="dark"] .route-control-utility,
+[data-theme="dark"] .community-list article,
+[data-theme="dark"] .community-filters button {
+    border-color: var(--ui-border);
+    background: var(--ui-surface-soft);
+    color: var(--ui-text);
+}
+
+[data-theme="dark"] .route-control-manual,
+[data-theme="dark"] .route-control-trip-options {
+    border-color: var(--ui-border);
+}
+
+[data-theme="dark"] .route-control-eyebrow,
+[data-theme="dark"] .route-control-field label,
+[data-theme="dark"] .route-control-status,
+[data-theme="dark"] .route-control-manual summary,
+[data-theme="dark"] .route-control-manual label,
+[data-theme="dark"] .community-header p,
+[data-theme="dark"] .community-list p,
+[data-theme="dark"] .community-dock small {
+    color: var(--ui-muted);
+}
+
+[data-theme="dark"] .route-control-options,
+[data-theme="dark"] .route-control-result {
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] .route-control-options button,
+[data-theme="dark"] .route-control-result strong {
+    color: var(--ui-text);
+}
+
+[data-theme="dark"] .route-control-options button:hover,
+[data-theme="dark"] .route-control-result:hover {
+    background: #223650;
+    color: #8fd3ff;
+}
+
+[data-theme="dark"] .route-control-search-status,
+[data-theme="dark"] .route-control-result small,
+[data-theme="dark"] .trip-options-status {
+    color: var(--ui-muted);
+}
+
+[data-theme="dark"] .route-control-map-mode {
+    background: #17334d;
+    color: #b9ddf6;
+}
+
+[data-theme="dark"] .route-control-ghost {
+    background: #26364b;
+    color: #d8e7f5;
+}
+
+[data-theme="dark"] .route-control-badge,
+[data-theme="dark"] .trip-option-route-mark {
+    background: #173b59;
+    color: #8fd3ff;
+}
+
+[data-theme="dark"] .trip-option-card {
+    border-color: var(--ui-border);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.22);
+}
+
+[data-theme="dark"] .trip-option-card.is-primary {
+    border-color: #3b9ff2;
+}
+
+[data-theme="dark"] .trip-option-details,
+[data-theme="dark"] .trip-option-metrics > div {
+    border-color: var(--ui-border);
+    background: var(--ui-surface-soft);
+}
+
+[data-theme="dark"] .trip-option-heading strong,
+[data-theme="dark"] .trip-option-quick b,
+[data-theme="dark"] .trip-option-route-list b,
+[data-theme="dark"] .trip-option-metrics dd,
+[data-theme="dark"] .trip-option-points b {
+    color: var(--ui-text);
+}
+
+[data-theme="dark"] .community-list > p {
+    background: var(--ui-surface-soft);
+}
+
+[data-theme="dark"] .community-panel form {
+    border-color: var(--ui-border) !important;
+    color: var(--ui-text);
+}
+
+[data-theme="dark"] .community-panel form select,
+[data-theme="dark"] .community-panel form textarea,
+[data-theme="dark"] .community-panel form button {
+    border-color: var(--ui-border) !important;
+    background: var(--ui-surface-soft) !important;
+    color: var(--ui-text) !important;
+}
+
+[data-theme="dark"] .maplibregl-popup-content {
+    background: #172438;
+    color: #edf6ff;
+    box-shadow: 0 9px 26px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .maplibregl-popup-tip {
+    border-top-color: #172438;
+    border-bottom-color: #172438;
+}
+
+[data-theme="dark"] .busnet-route-label .maplibregl-popup-content {
+    color: #edf6ff;
+}
+
+[data-theme="dark"] .trip-options-status.is-error,
+[data-theme="dark"] .community-error {
+    color: #ff9da5;
+}
+
+@media (max-width: 640px) {
+    .theme-toggle {
+        top: auto;
+        right: 10px;
+        bottom: 70px;
+    }
+
+}

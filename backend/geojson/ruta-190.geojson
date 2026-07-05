@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
 	"properties": {
 		"route": "190",
-		"nase": "Ruta 190",
+		"name": "Ruta 190",
         "color": "#B8FF00"
 	},
     "features": [
@@ -1884,6 +1884,7 @@
                 "Código_de": "AB190X0",
                 "Nombre_de_": "190",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "INTERURBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -3360,6 +3361,7 @@
                 "Código_de": "AB190X0",
                 "Nombre_de_": "190",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "INTERURBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

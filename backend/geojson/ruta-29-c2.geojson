@@ -1,10 +1,11 @@
 {
     "type": "FeatureCollection",
     "properties": {
-   	    "route": "29-c2",
-   	    "nase": "Ruta 29-c2",
-    	    "color": "#FF3D00"
-     },
+        "route": "29-c2",
+        "name": "Ruta 29-c2",
+        "color": "#FF3D00",
+        "direction": "ida"
+    },
     "features": [
         {
             "type": "Feature",
@@ -1725,6 +1726,7 @@
             },
             "properties": {
                 "name": "29-C2 REGRESO",
+                "direction": "regreso",
                 "styleUrl": "#line-0097A7-3131",
                 "styleHash": "-7424f172",
                 "styleMapHash": {
@@ -3386,6 +3388,7 @@
             },
             "properties": {
                 "name": "29-C2 IDA",
+                "direction": "ida",
                 "styleUrl": "#line-F57C00-3519",
                 "styleHash": "-562a0384",
                 "styleMapHash": {

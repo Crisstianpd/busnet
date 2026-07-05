@@ -1,0 +1,168 @@
+.busnet-map-shell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #0a1019;
+}
+
+.busnet-map-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.busnet-map-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: #fff;
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity 380ms ease, visibility 380ms ease;
+}
+
+.busnet-map-loading.is-ready {
+    visibility: hidden;
+    opacity: 0;
+}
+
+.busnet-map-loader {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    font: 800 0.74rem "Nunito Sans", sans-serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.busnet-map-loader::before {
+    width: 34px;
+    height: 34px;
+    border: 3px solid rgba(255, 255, 255, 0.28);
+    border-top-color: #57c4ff;
+    border-radius: 50%;
+    content: "";
+    animation: busnet-map-spin 0.8s linear infinite;
+}
+
+.busnet-map-marker {
+    transition: opacity 170ms ease, transform 170ms ease;
+}
+
+.busnet-map-marker.is-entering,
+.busnet-map-marker.is-leaving {
+    opacity: 0;
+    transform: translateY(8px) scale(0.72);
+}
+
+.busnet-transfer-stop {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 9px;
+    padding: 5px;
+    background: #1678e8;
+    color: #fff;
+    box-shadow: 0 5px 15px rgba(14, 59, 105, 0.34);
+    cursor: pointer;
+}
+
+.busnet-transfer-stop svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+[data-theme="dark"] .busnet-transfer-stop {
+    border-color: #bfe5ff;
+    background: #1d8df0;
+    box-shadow: 0 5px 17px rgba(0, 0, 0, 0.5);
+}
+
+.busnet-journey-marker {
+    display: grid;
+    min-width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 14px 14px 14px 4px;
+    padding: 5px 7px 4px;
+    color: #fff;
+    box-shadow: 0 7px 18px rgba(15, 48, 83, 0.32);
+    cursor: pointer;
+}
+
+.busnet-journey-marker.is-boarding {
+    background: #0878d7;
+}
+
+.busnet-journey-marker.is-arrival {
+    border-radius: 14px 14px 4px 14px;
+    background: #e6502c;
+}
+
+.busnet-journey-marker svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.busnet-journey-marker span {
+    font: 900 0.5rem "Nunito Sans", sans-serif;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+[data-theme="dark"] .busnet-journey-marker {
+    border-color: #ccecff;
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .busnet-journey-marker.is-boarding {
+    background: #168de8;
+}
+
+[data-theme="dark"] .busnet-journey-marker.is-arrival {
+    border-color: #ffd4c7;
+    background: #f06542;
+}
+
+.busnet-route-label .maplibregl-popup-content {
+    border: 2px solid var(--route-color, #1377e8);
+    border-radius: 999px;
+    padding: 5px 9px;
+    color: #18273b;
+    font: 900 0.7rem "Nunito Sans", sans-serif;
+    box-shadow: 0 7px 20px rgba(13, 39, 68, 0.2);
+}
+
+.busnet-route-label .maplibregl-popup-tip {
+    display: none;
+}
+
+@keyframes busnet-map-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .busnet-map-loading,
+    .busnet-map-marker,
+    .busnet-map-loader::before {
+        animation: none;
+        transition: none;
+    }
+}

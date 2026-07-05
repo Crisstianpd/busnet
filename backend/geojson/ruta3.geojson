@@ -1075,6 +1075,7 @@
                 "Código_de": "AB003X0",
                 "Nombre_de_": "3",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

@@ -1,10 +1,12 @@
-function formatDistance(value) {
-    const roundedValue = Math.round(value);
+import { useState } from "react";
+import "./TripOptions.css";
 
-    return roundedValue <= 1
-        ? "Sobre la ruta (≤ 1 m)"
-        : `${roundedValue} m`;
-}
+const trafficLevels = {
+    none: { label: "Sin reportes", score: 0, multiplier: 1 },
+    low: { label: "Tráfico bajo", score: 1, multiplier: 1.1 },
+    medium: { label: "Tráfico medio", score: 2, multiplier: 1.25 },
+    high: { label: "Tráfico alto", score: 3, multiplier: 1.45 }
+};
 
 function optionKey(option) {
     return option
@@ -12,219 +14,250 @@ function optionKey(option) {
         : "";
 }
 
+function formatDistance(value) {
+    if (!Number.isFinite(value)) return "No disponible";
+    const rounded = Math.round(value);
+    return rounded <= 1 ? "Sobre la ruta (≤ 1 m)" : `${rounded} m`;
+}
+
+function formatPoint(point) {
+    if (
+        !Number.isFinite(point?.latitude) ||
+        !Number.isFinite(point?.longitude)
+    ) return "No disponible";
+
+    return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+}
+
 function routeName(option, index) {
     return (
         option.routeDetails?.[index]?.name ||
-        `Ruta ${option.routes[index]}`
+        `Ruta ${option.routes?.[index] ?? ""}`.trim()
     );
 }
 
-const trafficLevels = {
-    none: {
-        label: "Sin reportes",
-        color: "#166534",
-        background: "#DCFCE7",
-        score: 0
-    },
-    low: {
-        label: "Tráfico bajo",
-        color: "#166534",
-        background: "#DCFCE7",
-        score: 1
-    },
-    medium: {
-        label: "Tráfico medio",
-        color: "#854D0E",
-        background: "#FEF9C3",
-        score: 2
-    },
-    high: {
-        label: "Tráfico alto",
-        color: "#991B1B",
-        background: "#FEE2E2",
-        score: 3
-    }
-};
+function tripCost(option) {
+    return option.type === "walk"
+        ? 0
+        : (option.routes?.length ?? 0) * 0.25;
+}
+
+function estimatedTime(option, trafficLevel) {
+    const walkingMeters = Number(option.walkingDistanceMeters) || 0;
+    const walkingMinutes = walkingMeters / 75;
+    const busMetersFromLegs = (option.legs ?? [])
+        .filter(leg => leg.type === "bus")
+        .reduce(
+            (total, leg) =>
+                total + (Number(leg.distanceMeters) || 0),
+            0
+        );
+    const fallbackBusMeters = Math.max(
+        0,
+        (Number(option.estimatedDistanceMeters) || 0) -
+            walkingMeters
+    );
+    const busMeters = busMetersFromLegs || fallbackBusMeters;
+
+    if (option.type !== "walk" && busMeters <= 0) return null;
+
+    const multiplier =
+        trafficLevels[trafficLevel]?.multiplier ?? 1;
+    const busMinutes = (busMeters / (22_000 / 60)) * multiplier;
+
+    return Math.max(1, Math.round(walkingMinutes + busMinutes));
+}
+
+function tripTypeLabel(option) {
+    if (option.type === "walk") return "Caminando";
+    if (option.type === "direct") return "Viaje directo";
+    return (option.transferCount ?? 1) === 1
+        ? "Con transbordo"
+        : "Con transbordos";
+}
 
 function OptionCard({
     option,
-    primary = false,
-    selected = false,
-    onSelect,
+    optionIndex,
+    primary,
+    selected,
+    expanded,
+    onToggle,
     communityAnalysis,
-    communityAnalysisLoading = false,
+    communityAnalysisLoading,
     suggestedAlternative
 }) {
-    const transfer = option.transferPoints?.[0];
-    const isWalk = option.type === "walk";
-    const trafficLevel =
-        communityAnalysis?.trafficLevel ?? null;
-    const trafficStyle = trafficLevels[trafficLevel];
+    const trafficLevel = communityAnalysis?.trafficLevel ?? "none";
+    const minutes = estimatedTime(option, trafficLevel);
+    const cost = tripCost(option);
+    const transfers = option.transferPoints ?? [];
+    const busCount = option.type === "walk"
+        ? 0
+        : option.routes?.length ?? 0;
+    const transferCount = option.type === "walk"
+        ? 0
+        : Math.max(0, busCount - 1);
+    const busLabel = `${busCount} ${busCount === 1 ? "bus" : "buses"}`;
+    const transferLabel =
+        `${transferCount} ${
+            transferCount === 1 ? "transbordo" : "transbordos"
+        }`;
 
     return (
-        <button
-            type="button"
-            onClick={() => onSelect(option)}
-            style={{
-                width: "100%",
-                border: selected
-                    ? "3px solid #2563EB"
-                    : primary
-                        ? "2px solid #2563EB"
-                        : "1px solid #D6E1EA",
-                borderRadius: 12,
-                padding: 12,
-                background: primary ? "#EFF6FF" : "#FFFFFF",
-                color: "#000000",
-                textAlign: "left",
-                cursor: "pointer"
-            }}
+        <article
+            className={`trip-option-card ${
+                primary ? "is-primary" : ""
+            } ${selected ? "is-selected" : ""}`}
         >
-            <strong style={{ color: "#000000" }}>
-                {isWalk
-                    ? "Recomendación: caminar"
-                    : `${primary ? "Ruta recomendada" : "Alternativa"}: ${
-                        (option.routes ?? []).join(" → ")
-                    }`}
-            </strong>
+            <button
+                type="button"
+                className="trip-option-summary"
+                onClick={onToggle}
+                aria-expanded={expanded}
+            >
+                <span className="trip-option-route-mark" aria-hidden="true">
+                    {option.type === "walk" ? "↟" : primary ? "★" : "→"}
+                </span>
+                <span className="trip-option-heading">
+                    <small>
+                        {primary
+                            ? "Ruta recomendada · Alternativa 1"
+                            : `Alternativa ${optionIndex + 1}`}
+                    </small>
+                    <strong>
+                        {option.type === "walk"
+                            ? "Caminar hasta el destino"
+                            : (option.routes ?? []).join(" → ")}
+                    </strong>
+                    <span>
+                        {tripTypeLabel(option)} · {busLabel} ·{" "}
+                        {transferLabel} · ${cost.toFixed(2)}
+                    </span>
+                </span>
+                <span className="trip-option-quick">
+                    <b>${cost.toFixed(2)}</b>
+                    <small>
+                        {minutes ? `≈ ${minutes} min` : "Tiempo no disponible"}
+                    </small>
+                </span>
+                <span className="trip-option-chevron" aria-hidden="true">
+                    {expanded ? "⌃" : "⌄"}
+                </span>
+            </button>
 
-            <div style={{ marginTop: 6, color: "#000000", fontSize: 14 }}>
-                {isWalk
-                    ? "Trayecto a pie"
-                    : option.type === "direct"
-                    ? "Viaje directo"
-                    : "Viaje con transbordo"}
-            </div>
-
-            {!isWalk && (
-                <div style={{ marginTop: 7 }}>
-                    {communityAnalysisLoading && !communityAnalysis ? (
-                        <span
-                            style={{
-                                display: "inline-flex",
-                                borderRadius: 999,
-                                padding: "4px 8px",
-                                background: "#E2E8F0",
-                                color: "#334155",
-                                fontSize: 12,
-                                fontWeight: 800
-                            }}
-                        >
-                            Analizando tráfico comunitario…
+            {expanded && (
+                <div className="trip-option-details">
+                    <div className="trip-option-badges">
+                        <span className={`is-${trafficLevel}`}>
+                            {communityAnalysisLoading && !communityAnalysis
+                                ? "Analizando tráfico…"
+                                : trafficLevels[trafficLevel]?.label}
                         </span>
-                    ) : trafficStyle ? (
-                        <span
-                            style={{
-                                display: "inline-flex",
-                                borderRadius: 999,
-                                padding: "4px 8px",
-                                background: trafficStyle.background,
-                                color: trafficStyle.color,
-                                fontSize: 12,
-                                fontWeight: 900
-                            }}
-                        >
-                            {trafficStyle.label}
-                        </span>
-                    ) : null}
-                </div>
-            )}
-
-            {isWalk ? (
-                <div style={{ marginTop: 8, color: "#000000" }}>
-                    {option.reason}
-                </div>
-            ) : option.type === "direct" ? (
-                <div style={{ marginTop: 8, color: "#000000" }}>
-                    <b>Ruta:</b> {routeName(option, 0)}
-                </div>
-            ) : (
-                <>
-                    <div style={{ marginTop: 8, color: "#000000" }}>
-                        <b>Ruta inicial:</b> {routeName(option, 0)}
+                        <span>{tripTypeLabel(option)}</span>
                     </div>
-                    <div style={{ marginTop: 4, color: "#000000" }}>
-                        <b>Punto de transbordo aproximado:</b>{" "}
-                        {formatDistance(
-                            transfer?.walkingDistanceMeters ??
-                            option.transferWalkDistanceMeters
-                        )} de caminata
-                    </div>
-                    <div style={{ marginTop: 4, color: "#000000" }}>
-                        <b>Ruta final:</b>{" "}
-                        {routeName(option, option.routes.length - 1)}
-                    </div>
-                </>
-            )}
 
-            <div style={{ marginTop: 8, color: "#000000", fontSize: 13 }}>
-                <b>
-                    {isWalk
-                        ? "Distancia caminando estimada:"
-                        : "Distancia caminando total:"}
-                </b>{" "}
-                {formatDistance(option.walkingDistanceMeters)}
-                {!isWalk && (
-                    <>
-                        <br />
-                        <b>Punto de abordaje aproximado:</b>{" "}
-                        {formatDistance(option.boardingDistanceMeters)}
-                        <br />
-                        <b>Punto de descenso aproximado:</b>{" "}
-                        {formatDistance(option.destinationDistanceMeters)}
-                        <br />
-                        <b>Radio usado en la búsqueda:</b>{" "}
-                        {formatDistance(option.radiusUsedMeters)}
-                    </>
-                )}
-            </div>
+                    {option.type !== "walk" && (
+                        <div className="trip-option-route-list">
+                            {(option.routes ?? []).map((route, index) => (
+                                <div key={`${route}-${index}`}>
+                                    <i>{index + 1}</i>
+                                    <span>
+                                        <small>
+                                            {index === 0
+                                                ? "Ruta inicial"
+                                                : "Continuar en"}
+                                        </small>
+                                        <b>{routeName(option, index)}</b>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
-            {!isWalk && (
-                <>
+                    <dl className="trip-option-metrics">
+                        <div>
+                            <dt>Costo promedio</dt>
+                            <dd>${cost.toFixed(2)}</dd>
+                        </div>
+                        <div>
+                            <dt>Tiempo promedio</dt>
+                            <dd>
+                                {minutes
+                                    ? `${minutes} min aprox.`
+                                    : "No disponible"}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Distancia caminando</dt>
+                            <dd>
+                                {formatDistance(option.walkingDistanceMeters)}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Radio de búsqueda</dt>
+                            <dd>{formatDistance(option.radiusUsedMeters)}</dd>
+                        </div>
+                    </dl>
+
+                    {option.type !== "walk" && (
+                        <div className="trip-option-points">
+                            <p>
+                                <b>Punto de abordaje aproximado</b>
+                                <span>{formatPoint(option.boardingPoint)}</span>
+                                <small>
+                                    A {formatDistance(option.boardingDistanceMeters)}
+                                </small>
+                            </p>
+                            {transfers.map(transfer => (
+                                <p key={`${transfer.order}-${transfer.fromRoute}`}>
+                                    <b>
+                                        Punto de transbordo aproximado{" "}
+                                        {transfer.order}
+                                    </b>
+                                    <span>{formatPoint(transfer.fromPoint)}</span>
+                                    <small>
+                                        De {transfer.fromRoute} a {transfer.toRoute}
+                                    </small>
+                                </p>
+                            ))}
+                            <p>
+                                <b>Punto de descenso aproximado</b>
+                                <span>{formatPoint(option.dropoffPoint)}</span>
+                                <small>
+                                    A {formatDistance(
+                                        option.destinationDistanceMeters
+                                    )} del destino
+                                </small>
+                            </p>
+                        </div>
+                    )}
+
                     {communityAnalysis?.trafficLevel === "high" && (
-                        <div
-                            style={{
-                                marginTop: 9,
-                                borderLeft: "3px solid #DC2626",
-                                padding: "7px 8px",
-                                background: "#FEF2F2",
-                                color: "#7F1D1D",
-                                fontSize: 13
-                            }}
-                        >
+                        <div className="trip-option-warning">
                             Hay tráfico alto reportado por la comunidad en esta ruta.
                         </div>
                     )}
 
                     {suggestedAlternative && (
-                        <div
-                            style={{
-                                marginTop: 7,
-                                borderLeft: "3px solid #F59E0B",
-                                padding: "7px 8px",
-                                background: "#FFFBEB",
-                                color: "#78350F",
-                                fontSize: 13
-                            }}
-                        >
+                        <div className="trip-option-suggestion">
                             Considera la alternativa{" "}
                             <b>{suggestedAlternative.routes.join(" → ")}</b>{" "}
                             para evitar tráfico.
                         </div>
                     )}
 
-                    <small
-                        style={{
-                            display: "block",
-                            marginTop: 8,
-                            color: "#000000"
-                        }}
-                    >
-                        Los puntos mostrados son aproximados, no paradas oficiales.
-                    </small>
-                </>
+                    {option.reason && (
+                        <p className="trip-option-reason">{option.reason}</p>
+                    )}
+
+                    {option.type !== "walk" && (
+                        <small className="trip-option-disclaimer">
+                            Los puntos son aproximados, no paradas oficiales.
+                        </small>
+                    )}
+                </div>
             )}
-        </button>
+        </article>
     );
 }
 
@@ -237,120 +270,77 @@ export default function TripOptions({
     communityAnalysisByOption = {},
     communityAnalysisLoading = false
 }) {
+    const [expandedKey, setExpandedKey] = useState("");
+
     if (loading) {
-        return <div style={{ padding: 14 }}>Calculando rutas cercanas…</div>;
+        return <div className="trip-options-status">Calculando rutas cercanas…</div>;
     }
-
     if (error) {
-        return (
-            <div style={{ padding: 14, color: "#B91C1C" }}>
-                {error}
-            </div>
-        );
+        return <div className="trip-options-status is-error">{error}</div>;
     }
-
     if (!plan?.bestOption) {
         return (
-            <div style={{ padding: 14 }}>
-                Selecciona un destino o haz clic en el mapa.
+            <div className="trip-options-status">
+                Selecciona origen y destino para ver opciones.
             </div>
         );
     }
 
-    const options = [
-        plan.bestOption,
-        ...(plan.alternatives ?? [])
-    ];
+    const options = [plan.bestOption, ...(plan.alternatives ?? [])];
     const suggestedAlternativeFor = option => {
-        const current =
-            communityAnalysisByOption[optionKey(option)];
-        const currentLevel = trafficLevels[current?.trafficLevel];
-
-        if (!currentLevel || current?.trafficLevel !== "high") {
-            return null;
-        }
+        const current = communityAnalysisByOption[optionKey(option)];
+        if (current?.trafficLevel !== "high") return null;
 
         return options
-            .filter(candidate =>
-                optionKey(candidate) !== optionKey(option)
-            )
+            .filter(candidate => optionKey(candidate) !== optionKey(option))
             .filter(candidate => {
-                const candidateAnalysis =
-                    communityAnalysisByOption[optionKey(candidate)];
                 const candidateLevel =
-                    trafficLevels[candidateAnalysis?.trafficLevel];
+                    communityAnalysisByOption[optionKey(candidate)]
+                        ?.trafficLevel;
 
                 return (
-                    candidateLevel &&
-                    candidateLevel.score < currentLevel.score
+                    trafficLevels[candidateLevel] &&
+                    trafficLevels[candidateLevel].score <
+                        trafficLevels.high.score
                 );
             })
-            .sort((left, right) => {
-                const leftLevel = trafficLevels[
-                    communityAnalysisByOption[
-                        optionKey(left)
-                    ].trafficLevel
-                ];
-                const rightLevel = trafficLevels[
-                    communityAnalysisByOption[
-                        optionKey(right)
-                    ].trafficLevel
-                ];
-
-                return leftLevel.score - rightLevel.score;
-            })[0] ?? null;
+            .sort((left, right) =>
+                trafficLevels[
+                    communityAnalysisByOption[optionKey(left)]?.trafficLevel
+                ].score -
+                trafficLevels[
+                    communityAnalysisByOption[optionKey(right)]?.trafficLevel
+                ].score
+            )[0] ?? null;
     };
 
     return (
-        <div
-            style={{
-                display: "grid",
-                gap: 10,
-                maxHeight: "48vh",
-                overflowY: "auto",
-                padding: 12
-            }}
-        >
-            <OptionCard
-                option={plan.bestOption}
-                primary
-                selected={
-                    optionKey(selectedOption) ===
-                    optionKey(plan.bestOption)
-                }
-                onSelect={onSelectOption}
-                communityAnalysis={
-                    communityAnalysisByOption[
-                        optionKey(plan.bestOption)
-                    ]
-                }
-                communityAnalysisLoading={
-                    communityAnalysisLoading
-                }
-                suggestedAlternative={
-                    suggestedAlternativeFor(plan.bestOption)
-                }
-            />
+        <div className="trip-options-list">
+            {options.map((option, index) => {
+                const key = optionKey(option);
 
-            {(plan.alternatives ?? []).map((option, index) => (
-                <OptionCard
-                    key={`${optionKey(option)}-${index}`}
-                    option={option}
-                    selected={
-                        optionKey(selectedOption) === optionKey(option)
-                    }
-                    onSelect={onSelectOption}
-                    communityAnalysis={
-                        communityAnalysisByOption[optionKey(option)]
-                    }
-                    communityAnalysisLoading={
-                        communityAnalysisLoading
-                    }
-                    suggestedAlternative={
-                        suggestedAlternativeFor(option)
-                    }
-                />
-            ))}
+                return (
+                    <OptionCard
+                        key={`${key}-${index}`}
+                        option={option}
+                        optionIndex={index}
+                        primary={index === 0}
+                        selected={optionKey(selectedOption) === key}
+                        expanded={expandedKey === key}
+                        onToggle={() => {
+                            onSelectOption(option);
+                            setExpandedKey(current =>
+                                current === key ? "" : key
+                            );
+                        }}
+                        communityAnalysis={communityAnalysisByOption[key]}
+                        communityAnalysisLoading={communityAnalysisLoading}
+                        suggestedAlternative={
+                            suggestedAlternativeFor(option)
+                        }
+                    />
+                );
+            })}
         </div>
     );
 }

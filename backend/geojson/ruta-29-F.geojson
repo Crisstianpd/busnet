@@ -2,7 +2,7 @@
     "type": "FeatureCollection",
 	"properties": {
 		"route": "29-F",
-		"nase": "Ruta 29-F",
+		"name": "Ruta 29-F",
         "color": "#7CFF00"
 	},
     "features": [
@@ -919,6 +919,7 @@
                 "Código_de": "AB029F0",
                 "Nombre_de_": "29-F",
                 "SENTIDO": "IDA",
+                "direction": "ida",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",
@@ -1895,6 +1896,7 @@
                 "Código_de": "AB029F0",
                 "Nombre_de_": "29-F",
                 "SENTIDO": "REGRESO",
+                "direction": "regreso",
                 "TIPO": "POR AUTOBUS",
                 "SUBTIPO": "URBANO",
                 "DEPARTAMEN": "SAN SALVADOR",

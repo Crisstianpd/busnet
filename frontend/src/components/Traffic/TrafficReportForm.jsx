@@ -3,11 +3,11 @@ import { useState } from "react";
 const fieldStyle = {
     width: "100%",
     boxSizing: "border-box",
-    border: "1px solid rgba(148, 163, 184, 0.28)",
+    border: "1px solid #DCE6F0",
     borderRadius: 10,
     padding: "9px 10px",
-    background: "rgba(15, 23, 42, 0.9)",
-    color: "#F8FAFC"
+    background: "#F7FAFC",
+    color: "#16243A"
 };
 
 export default function TrafficReportForm({

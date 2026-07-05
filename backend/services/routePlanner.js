@@ -1,4 +1,5 @@
 import {
+    bbox,
     distance,
     length,
     lineIntersect,
@@ -11,6 +12,7 @@ import { resolveRoutingConfig } from "../config/routing.js";
 
 const networkCache = new WeakMap();
 const connectionLinesCache = new WeakMap();
+const routeBoundsCache = new WeakMap();
 
 function roundMeters(value) {
     return Math.round(value);
@@ -22,9 +24,35 @@ function toLocation(feature) {
     return { latitude, longitude };
 }
 
-function compareOptions(left, right) {
+function compareOptions(left, right, config) {
+    const preferredDirect = option =>
+        option.type === "direct" &&
+        option.boardingDistanceMeters <=
+            config.preferredWalkToRouteMeters &&
+        option.destinationDistanceMeters <=
+            config.preferredWalkToRouteMeters;
+    const accessPenalty = option =>
+        (
+            option.boardingDistanceMeters >
+                config.preferredWalkToRouteMeters
+                ? 10000
+                : 0
+        ) + (
+            option.destinationDistanceMeters >
+                config.preferredWalkToRouteMeters
+                ? 10000
+                : 0
+        );
+
     return (
-        left.walkingDistanceMeters - right.walkingDistanceMeters ||
+        Number(preferredDirect(right)) -
+            Number(preferredDirect(left)) ||
+        (
+            left.walkingDistanceMeters + accessPenalty(left)
+        ) - (
+            right.walkingDistanceMeters + accessPenalty(right)
+        ) ||
+        left.routes.length - right.routes.length ||
         left.transferCount - right.transferCount ||
         left.radiusUsedMeters - right.radiusUsedMeters ||
         left.estimatedDistanceMeters - right.estimatedDistanceMeters ||
@@ -205,7 +233,42 @@ function getConnectionLines(route) {
     return lines;
 }
 
+function getRouteBounds(route) {
+    const cached = routeBoundsCache.get(route);
+
+    if (cached) return cached;
+
+    const bounds = bbox(route.geojson);
+
+    routeBoundsCache.set(route, bounds);
+    return bounds;
+}
+
+function minimumBoundsDistanceMeters(firstBounds, secondBounds) {
+    const longitudeGap = Math.max(
+        0,
+        firstBounds[0] - secondBounds[2],
+        secondBounds[0] - firstBounds[2]
+    ) * 105000;
+    const latitudeGap = Math.max(
+        0,
+        firstBounds[1] - secondBounds[3],
+        secondBounds[1] - firstBounds[3]
+    ) * 110000;
+
+    return Math.hypot(longitudeGap, latitudeGap);
+}
+
 function findTransfer(routeFrom, routeTo, maximumWalkMeters) {
+    if (
+        minimumBoundsDistanceMeters(
+            getRouteBounds(routeFrom),
+            getRouteBounds(routeTo)
+        ) > maximumWalkMeters
+    ) {
+        return null;
+    }
+
     let bestTransfer = null;
 
     for (const fromConnectionLine of getConnectionLines(routeFrom)) {
@@ -338,7 +401,7 @@ function createWalkOption(walkingDistanceMeters) {
         dropoffPoint: null,
         estimated: true,
         reason:
-            "El destino está a menos de 200 metros. Se recomienda caminar."
+            "El destino está cerca. Se recomienda caminar."
     };
 }
 
@@ -401,9 +464,11 @@ function createDirectOption(originRoute, destinationRoute, config) {
         estimated: true,
         reason:
             boardingDistanceMeters <=
-                config.directBoardingThresholdMeters
-                ? "Existe una ruta directa con abordaje cercano."
-                : `Existe una ruta directa, pero el abordaje requiere caminar más de ${config.directBoardingThresholdMeters} metros.`
+                config.preferredWalkToRouteMeters &&
+            destinationDistanceMeters <=
+                config.preferredWalkToRouteMeters
+                ? "Existe una ruta directa con abordaje y descenso cercanos."
+                : `Existe una ruta directa, pero requiere caminar más de ${config.preferredWalkToRouteMeters} metros en uno de sus extremos.`
     };
 }
 
@@ -526,7 +591,7 @@ function createPathOption(originRoute, destinationRoute, state) {
         reason:
             transfers.length === 1
                 ? "Se encontró una conexión entre dos rutas cercanas."
-                : "Se encontró una combinación de rutas con dos transbordos aproximados."
+                : `Se encontró una combinación de rutas con ${transfers.length} puntos de transbordo aproximados.`
     };
 }
 
@@ -557,116 +622,103 @@ function findConnectedOptions(
     if (config.maximumTransfers < 1) return [];
 
     const routeById = new Map(routes.map(route => [route.route, route]));
+    const destinationByRoute = new Map(
+        destinationCandidates.map(route => [route.route, route])
+    );
     const options = [];
+    const maximumBuses = Math.min(
+        config.maximumBuses,
+        config.maximumTransfers + 1
+    );
     let searchedStates = 0;
 
     for (const originCandidate of originCandidates) {
         const originRoute = routeById.get(originCandidate.route);
+        const queue = [{
+            routeObjects: [originRoute],
+            edges: [],
+            visited: new Set([originRoute.route])
+        }];
 
-        for (const destinationCandidate of destinationCandidates) {
-            if (originCandidate.route === destinationCandidate.route) {
+        while (
+            queue.length > 0 &&
+            searchedStates < config.maximumSearchStates
+        ) {
+            const state = queue.shift();
+            const currentRoute =
+                state.routeObjects[state.routeObjects.length - 1];
+            const destinationCandidate = destinationByRoute.get(
+                currentRoute.route
+            );
+
+            if (
+                state.edges.length > 0 &&
+                destinationCandidate
+            ) {
+                options.push(createPathOption(
+                    originCandidate,
+                    destinationCandidate,
+                    state
+                ));
                 continue;
             }
 
-            if (searchedStates >= config.maximumSearchStates) return options;
-            searchedStates += 1;
+            if (state.routeObjects.length >= maximumBuses) continue;
 
-            const destinationRoute = routeById.get(
-                destinationCandidate.route
-            );
-            const transfer = findCachedTransfer(
-                originRoute,
-                destinationRoute,
-                routes,
-                config
-            );
+            const isFinalBus =
+                state.routeObjects.length === maximumBuses - 1;
+            const nextRoutes = isFinalBus
+                ? destinationCandidates
+                    .map(candidate => routeById.get(candidate.route))
+                    .filter(Boolean)
+                : routes;
 
-            if (!transfer) continue;
+            for (const nextRoute of nextRoutes) {
+                if (state.visited.has(nextRoute.route)) continue;
+                if (searchedStates >= config.maximumSearchStates) break;
 
-            options.push(createPathOption(
-                originCandidate,
-                destinationCandidate,
-                {
-                    routeObjects: [originRoute, destinationRoute],
-                    edges: [{ route: destinationRoute, transfer }]
-                }
-            ));
-        }
-    }
-
-    if (
-        config.maximumTransfers < 2 ||
-        options.length >= config.maximumAlternatives
-    ) {
-        return options;
-    }
-
-    for (const originCandidate of originCandidates) {
-        const originRoute = routeById.get(originCandidate.route);
-
-        for (const intermediateRoute of routes) {
-            if (intermediateRoute.route === originCandidate.route) continue;
-
-            if (searchedStates >= config.maximumSearchStates) return options;
-            searchedStates += 1;
-
-            const firstTransfer = findCachedTransfer(
-                originRoute,
-                intermediateRoute,
-                routes,
-                config
-            );
-
-            if (!firstTransfer) continue;
-
-            for (const destinationCandidate of destinationCandidates) {
-                if (
-                    destinationCandidate.route === originCandidate.route ||
-                    destinationCandidate.route === intermediateRoute.route
-                ) {
-                    continue;
-                }
-
-                if (
-                    searchedStates >= config.maximumSearchStates
-                ) return options;
                 searchedStates += 1;
-
-                const destinationRoute = routeById.get(
-                    destinationCandidate.route
-                );
-                const secondTransfer = findCachedTransfer(
-                    intermediateRoute,
-                    destinationRoute,
+                const transfer = findCachedTransfer(
+                    currentRoute,
+                    nextRoute,
                     routes,
                     config
                 );
 
-                if (!secondTransfer) continue;
+                if (!transfer) continue;
 
-                options.push(createPathOption(
-                    originCandidate,
-                    destinationCandidate,
-                    {
-                        routeObjects: [
-                            originRoute,
-                            intermediateRoute,
-                            destinationRoute
-                        ],
-                        edges: [
-                            {
-                                route: intermediateRoute,
-                                transfer: firstTransfer
-                            },
-                            {
-                                route: destinationRoute,
-                                transfer: secondTransfer
-                            }
-                        ]
-                    }
-                ));
+                const nextState = {
+                    routeObjects: [
+                        ...state.routeObjects,
+                        nextRoute
+                    ],
+                    edges: [
+                        ...state.edges,
+                        { route: nextRoute, transfer }
+                    ],
+                    visited: new Set([
+                        ...state.visited,
+                        nextRoute.route
+                    ])
+                };
+                const nextDestinationCandidate = destinationByRoute.get(
+                    nextRoute.route
+                );
+
+                if (nextDestinationCandidate) {
+                    options.push(createPathOption(
+                        originCandidate,
+                        nextDestinationCandidate,
+                        nextState
+                    ));
+                    continue;
+                }
+
+                queue.push(nextState);
             }
         }
+
+        if (searchedStates >= config.maximumSearchStates) break;
     }
 
     return options;
@@ -688,7 +740,10 @@ export function planTrip({
         distance(originPoint, destinationPoint, { units: "meters" })
     );
 
-    if (directWalkingDistanceMeters < config.walkThresholdMeters) {
+    if (
+        directWalkingDistanceMeters <=
+        config.walkOnlyThresholdMeters
+    ) {
         return {
             search: {
                 originRadiusMeters: 0,
@@ -731,7 +786,9 @@ export function planTrip({
     const hasConvenientDirectOption = directOptions.some(
         option =>
             option.boardingDistanceMeters <=
-            config.directBoardingThresholdMeters
+                config.preferredWalkToRouteMeters &&
+            option.destinationDistanceMeters <=
+                config.preferredWalkToRouteMeters
     );
     const connectedOptions = hasConvenientDirectOption
         ? []
@@ -744,7 +801,7 @@ export function planTrip({
     const rankedOptions = removeDuplicateOptions([
         ...directOptions,
         ...connectedOptions
-    ].sort(compareOptions))
+    ].sort((left, right) => compareOptions(left, right, config)))
         .slice(0, config.maximumAlternatives);
     const bestOption = rankedOptions[0] ?? null;
 
