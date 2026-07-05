@@ -6,6 +6,10 @@ import { centerOfMass } from "@turf/turf";
 import { normalizeRoutes } from "./services/geojsonNormalizer.js";
 import { validatePlanRequest } from "./services/planRequestValidator.js";
 import { planTrip } from "./services/routePlanner.js";
+import {
+    CommunityTrafficValidationError,
+    communityTrafficService
+} from "./services/communityTrafficService.js";
 
 const app = express();
 
@@ -116,6 +120,12 @@ function runTripPlaceholder({ origin, destination }) {
 }
 
 const normalizedRoutes = normalizeRoutes(routes);
+const normalizedRoutesById = new Map(
+    normalizedRoutes.map(route => [
+        route.route.toLowerCase(),
+        route
+    ])
+);
 
 console.log(
     `🗺️ ${normalizedRoutes.length} rutas listas para planificación.`
@@ -220,6 +230,71 @@ app.post("/plan", (req, res) => {
     }
 
     return res.json(result);
+});
+
+app.get("/traffic/community", (req, res) => {
+    try {
+        return res.json(
+            communityTrafficService.listActiveReports()
+        );
+    }
+    catch {
+        return res.status(500).json({
+            error: "No se pudieron leer los reportes de la comunidad."
+        });
+    }
+});
+
+app.post("/traffic/report", (req, res) => {
+    try {
+        const report = communityTrafficService.createReport(req.body);
+
+        return res.status(201).json(report);
+    }
+    catch (error) {
+        if (error instanceof CommunityTrafficValidationError) {
+            return res.status(error.statusCode).json({
+                error: error.message
+            });
+        }
+
+        return res.status(500).json({
+            error: "No se pudo guardar el reporte comunitario."
+        });
+    }
+});
+
+app.post("/traffic/analyze-plan", (req, res) => {
+    const option =
+        req.body?.bestOption ??
+        req.body?.option ??
+        req.body;
+
+    if (
+        !option ||
+        typeof option !== "object" ||
+        !Array.isArray(option.routes)
+    ) {
+        return res.status(400).json({
+            error:
+                "Debes enviar bestOption u option con un arreglo routes."
+        });
+    }
+
+    try {
+        return res.json(
+            communityTrafficService.analyzePlan(
+                option,
+                normalizedRoutesById
+            )
+        );
+    }
+    catch {
+        return res.status(500).json({
+            error:
+                "No se pudo analizar el tráfico reportado por la comunidad."
+        });
+    }
 });
 
 app.post("/trip/start", (req, res) => {

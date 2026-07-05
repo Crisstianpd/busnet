@@ -15,13 +15,71 @@ function getRouteColor(geojson) {
     );
 }
 
+const communitySeverityColors = {
+    low: "#22C55E",
+    medium: "#FACC15",
+    high: "#EF4444"
+};
+
+const communityTypeLabels = {
+    traffic: "Tráfico",
+    accident: "Accidente",
+    road_closed: "Calle cerrada",
+    flood: "Inundación",
+    bus_issue: "Bus detenido",
+    police_control: "Control policial",
+    other: "Otro incidente"
+};
+
+function remainingTime(expiresAt) {
+    const minutes = Math.max(
+        0,
+        Math.ceil((Date.parse(expiresAt) - Date.now()) / 60000)
+    );
+
+    return minutes < 60
+        ? `${minutes} minutos`
+        : `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+}
+
+function createCommunityPopup(report) {
+    const container = document.createElement("div");
+    const title = document.createElement("strong");
+    const details = document.createElement("div");
+    const description = document.createElement("div");
+    const disclaimer = document.createElement("small");
+
+    title.textContent =
+        communityTypeLabels[report.type] ?? "Incidente";
+    details.textContent =
+        `Severidad: ${report.severity} · Tiempo restante: ${
+            remainingTime(report.expiresAt)
+        }`;
+    description.textContent = report.description;
+    disclaimer.textContent =
+        "Tráfico reportado por la comunidad. Información aproximada y no oficial.";
+
+    details.style.marginTop = "4px";
+    details.style.color = "#475569";
+    description.style.marginTop = "7px";
+    disclaimer.style.display = "block";
+    disclaimer.style.marginTop = "8px";
+    disclaimer.style.color = "#64748B";
+
+    container.append(title, details, description, disclaimer);
+
+    return container;
+}
+
 export default function MapView({
     geojson,
     plannedGeojsons = [],
     location,
     destination,
     planOption,
-    onDestinationSelect
+    onDestinationSelect,
+    communityReports = [],
+    onTrafficLocationSelect
 }) {
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
@@ -29,6 +87,8 @@ export default function MapView({
     const destinationMarkerRef = useRef(null);
     const planMarkersRef = useRef([]);
     const renderedLayersRef = useRef([]);
+    const communityMarkersRef = useRef([]);
+    const communityLayerRef = useRef(null);
 
     useEffect(() => {
         const map = new maplibregl.Map({
@@ -51,19 +111,29 @@ export default function MapView({
     useEffect(() => {
         const map = mapRef.current;
 
-        if (!map || !onDestinationSelect) return undefined;
+        if (
+            !map ||
+            (!onDestinationSelect && !onTrafficLocationSelect)
+        ) return undefined;
 
         const handleClick = event => {
-            onDestinationSelect({
+            const coordinates = {
                 latitude: event.lngLat.lat,
                 longitude: event.lngLat.lng
-            });
+            };
+
+            if (onTrafficLocationSelect) {
+                onTrafficLocationSelect(coordinates);
+                return;
+            }
+
+            onDestinationSelect?.(coordinates);
         };
 
         map.on("click", handleClick);
 
         return () => map.off("click", handleClick);
-    }, [onDestinationSelect]);
+    }, [onDestinationSelect, onTrafficLocationSelect]);
 
     useEffect(() => {
         const map = mapRef.current;
@@ -183,6 +253,148 @@ export default function MapView({
 
         return () => map.off("load", drawRoutes);
     }, [geojson, plannedGeojsons]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+
+        if (!map) return undefined;
+
+        const clearCommunityReports = () => {
+            for (const marker of communityMarkersRef.current) {
+                marker.remove();
+            }
+            communityMarkersRef.current = [];
+
+            const current = communityLayerRef.current;
+
+            if (current?.layerId && map.getLayer(current.layerId)) {
+                map.removeLayer(current.layerId);
+            }
+            if (current?.sourceId && map.getSource(current.sourceId)) {
+                map.removeSource(current.sourceId);
+            }
+
+            communityLayerRef.current = null;
+        };
+        const drawCommunityReports = () => {
+            clearCommunityReports();
+
+            if (communityReports.length === 0) return;
+
+            const sourceId = "community-traffic-source";
+            const layerId = "community-traffic-zones";
+            const data = {
+                type: "FeatureCollection",
+                features: communityReports.map(report => ({
+                    type: "Feature",
+                    properties: {
+                        id: report.id,
+                        severity: report.severity,
+                        radiusMeters: report.radiusMeters,
+                        color:
+                            communitySeverityColors[report.severity] ??
+                            "#94A3B8"
+                    },
+                    geometry: {
+                        type: "Point",
+                        coordinates: [
+                            report.longitude,
+                            report.latitude
+                        ]
+                    }
+                }))
+            };
+
+            map.addSource(sourceId, {
+                type: "geojson",
+                data
+            });
+            map.addLayer({
+                id: layerId,
+                type: "circle",
+                source: sourceId,
+                paint: {
+                    "circle-color": ["get", "color"],
+                    "circle-opacity": 0.18,
+                    "circle-stroke-color": ["get", "color"],
+                    "circle-stroke-opacity": 0.82,
+                    "circle-stroke-width": 2,
+                    "circle-radius": [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        10,
+                        [
+                            "max",
+                            3,
+                            ["/", ["get", "radiusMeters"], 70]
+                        ],
+                        14,
+                        [
+                            "max",
+                            8,
+                            ["/", ["get", "radiusMeters"], 10]
+                        ],
+                        18,
+                        [
+                            "max",
+                            16,
+                            ["/", ["get", "radiusMeters"], 1.3]
+                        ]
+                    ]
+                }
+            });
+            communityLayerRef.current = { sourceId, layerId };
+
+            for (const report of communityReports) {
+                const element = document.createElement("button");
+
+                element.type = "button";
+                element.title = "Ver reporte comunitario";
+                element.style.width = "18px";
+                element.style.height = "18px";
+                element.style.borderRadius = "50%";
+                element.style.border = "3px solid #FFFFFF";
+                element.style.background =
+                    communitySeverityColors[report.severity] ??
+                    "#94A3B8";
+                element.style.boxShadow =
+                    "0 3px 12px rgba(15, 23, 42, 0.4)";
+                element.style.cursor = "pointer";
+                element.addEventListener(
+                    "click",
+                    event => event.stopPropagation()
+                );
+
+                const marker = new maplibregl.Marker({ element })
+                    .setLngLat([
+                        report.longitude,
+                        report.latitude
+                    ])
+                    .setPopup(
+                        new maplibregl.Popup({
+                            offset: 14,
+                            maxWidth: "300px"
+                        }).setDOMContent(createCommunityPopup(report))
+                    )
+                    .addTo(map);
+
+                communityMarkersRef.current.push(marker);
+            }
+        };
+
+        if (map.isStyleLoaded()) {
+            drawCommunityReports();
+        }
+        else {
+            map.once("load", drawCommunityReports);
+        }
+
+        return () => {
+            map.off("load", drawCommunityReports);
+            clearCommunityReports();
+        };
+    }, [communityReports]);
 
     useEffect(() => {
         const map = mapRef.current;

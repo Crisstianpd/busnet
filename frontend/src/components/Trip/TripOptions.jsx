@@ -19,14 +19,47 @@ function routeName(option, index) {
     );
 }
 
+const trafficLevels = {
+    none: {
+        label: "Sin reportes",
+        color: "#166534",
+        background: "#DCFCE7",
+        score: 0
+    },
+    low: {
+        label: "Tráfico bajo",
+        color: "#166534",
+        background: "#DCFCE7",
+        score: 1
+    },
+    medium: {
+        label: "Tráfico medio",
+        color: "#854D0E",
+        background: "#FEF9C3",
+        score: 2
+    },
+    high: {
+        label: "Tráfico alto",
+        color: "#991B1B",
+        background: "#FEE2E2",
+        score: 3
+    }
+};
+
 function OptionCard({
     option,
     primary = false,
     selected = false,
-    onSelect
+    onSelect,
+    communityAnalysis,
+    communityAnalysisLoading = false,
+    suggestedAlternative
 }) {
     const transfer = option.transferPoints?.[0];
     const isWalk = option.type === "walk";
+    const trafficLevel =
+        communityAnalysis?.trafficLevel ?? null;
+    const trafficStyle = trafficLevels[trafficLevel];
 
     return (
         <button
@@ -62,6 +95,40 @@ function OptionCard({
                     ? "Viaje directo"
                     : "Viaje con transbordo"}
             </div>
+
+            {!isWalk && (
+                <div style={{ marginTop: 7 }}>
+                    {communityAnalysisLoading && !communityAnalysis ? (
+                        <span
+                            style={{
+                                display: "inline-flex",
+                                borderRadius: 999,
+                                padding: "4px 8px",
+                                background: "#E2E8F0",
+                                color: "#334155",
+                                fontSize: 12,
+                                fontWeight: 800
+                            }}
+                        >
+                            Analizando tráfico comunitario…
+                        </span>
+                    ) : trafficStyle ? (
+                        <span
+                            style={{
+                                display: "inline-flex",
+                                borderRadius: 999,
+                                padding: "4px 8px",
+                                background: trafficStyle.background,
+                                color: trafficStyle.color,
+                                fontSize: 12,
+                                fontWeight: 900
+                            }}
+                        >
+                            {trafficStyle.label}
+                        </span>
+                    ) : null}
+                </div>
+            )}
 
             {isWalk ? (
                 <div style={{ marginTop: 8, color: "#000000" }}>
@@ -113,15 +180,49 @@ function OptionCard({
             </div>
 
             {!isWalk && (
-                <small
-                    style={{
-                        display: "block",
-                        marginTop: 8,
-                        color: "#000000"
-                    }}
-                >
-                    Los puntos mostrados son aproximados, no paradas oficiales.
-                </small>
+                <>
+                    {communityAnalysis?.trafficLevel === "high" && (
+                        <div
+                            style={{
+                                marginTop: 9,
+                                borderLeft: "3px solid #DC2626",
+                                padding: "7px 8px",
+                                background: "#FEF2F2",
+                                color: "#7F1D1D",
+                                fontSize: 13
+                            }}
+                        >
+                            Hay tráfico alto reportado por la comunidad en esta ruta.
+                        </div>
+                    )}
+
+                    {suggestedAlternative && (
+                        <div
+                            style={{
+                                marginTop: 7,
+                                borderLeft: "3px solid #F59E0B",
+                                padding: "7px 8px",
+                                background: "#FFFBEB",
+                                color: "#78350F",
+                                fontSize: 13
+                            }}
+                        >
+                            Considera la alternativa{" "}
+                            <b>{suggestedAlternative.routes.join(" → ")}</b>{" "}
+                            para evitar tráfico.
+                        </div>
+                    )}
+
+                    <small
+                        style={{
+                            display: "block",
+                            marginTop: 8,
+                            color: "#000000"
+                        }}
+                    >
+                        Los puntos mostrados son aproximados, no paradas oficiales.
+                    </small>
+                </>
             )}
         </button>
     );
@@ -132,7 +233,9 @@ export default function TripOptions({
     loading,
     error,
     selectedOption,
-    onSelectOption
+    onSelectOption,
+    communityAnalysisByOption = {},
+    communityAnalysisLoading = false
 }) {
     if (loading) {
         return <div style={{ padding: 14 }}>Calculando rutas cercanas…</div>;
@@ -154,6 +257,50 @@ export default function TripOptions({
         );
     }
 
+    const options = [
+        plan.bestOption,
+        ...(plan.alternatives ?? [])
+    ];
+    const suggestedAlternativeFor = option => {
+        const current =
+            communityAnalysisByOption[optionKey(option)];
+        const currentLevel = trafficLevels[current?.trafficLevel];
+
+        if (!currentLevel || current?.trafficLevel !== "high") {
+            return null;
+        }
+
+        return options
+            .filter(candidate =>
+                optionKey(candidate) !== optionKey(option)
+            )
+            .filter(candidate => {
+                const candidateAnalysis =
+                    communityAnalysisByOption[optionKey(candidate)];
+                const candidateLevel =
+                    trafficLevels[candidateAnalysis?.trafficLevel];
+
+                return (
+                    candidateLevel &&
+                    candidateLevel.score < currentLevel.score
+                );
+            })
+            .sort((left, right) => {
+                const leftLevel = trafficLevels[
+                    communityAnalysisByOption[
+                        optionKey(left)
+                    ].trafficLevel
+                ];
+                const rightLevel = trafficLevels[
+                    communityAnalysisByOption[
+                        optionKey(right)
+                    ].trafficLevel
+                ];
+
+                return leftLevel.score - rightLevel.score;
+            })[0] ?? null;
+    };
+
     return (
         <div
             style={{
@@ -172,6 +319,17 @@ export default function TripOptions({
                     optionKey(plan.bestOption)
                 }
                 onSelect={onSelectOption}
+                communityAnalysis={
+                    communityAnalysisByOption[
+                        optionKey(plan.bestOption)
+                    ]
+                }
+                communityAnalysisLoading={
+                    communityAnalysisLoading
+                }
+                suggestedAlternative={
+                    suggestedAlternativeFor(plan.bestOption)
+                }
             />
 
             {(plan.alternatives ?? []).map((option, index) => (
@@ -182,6 +340,15 @@ export default function TripOptions({
                         optionKey(selectedOption) === optionKey(option)
                     }
                     onSelect={onSelectOption}
+                    communityAnalysis={
+                        communityAnalysisByOption[optionKey(option)]
+                    }
+                    communityAnalysisLoading={
+                        communityAnalysisLoading
+                    }
+                    suggestedAlternative={
+                        suggestedAlternativeFor(option)
+                    }
                 />
             ))}
         </div>

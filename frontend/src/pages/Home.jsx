@@ -1,14 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import MapView from "../components/Map/MapView";
+import TrafficPanel from "../components/Traffic/TrafficPanel";
 import TripOptions from "../components/Trip/TripOptions";
 import useLocation from "../hooks/useLocation";
 import {
+    analyzeCommunityTrafficPlan,
+    createCommunityTrafficReport,
     getRoute,
     getRoutes,
+    getCommunityTrafficReports,
     planTrip,
     startTrip,
     searchPlaces
 } from "../services/api";
+
+function planOptionKey(option) {
+    return option
+        ? `${option.type}:${(option.routes ?? []).join(">")}`
+        : "";
+}
 
 export default function Home() {
     const {
@@ -34,12 +44,100 @@ export default function Home() {
     const [planningError, setPlanningError] = useState("");
     const [startingTrip, setStartingTrip] = useState(false);
     const [tripMessage, setTripMessage] = useState("");
+    const [communityReports, setCommunityReports] = useState([]);
+    const [communityLoading, setCommunityLoading] = useState(true);
+    const [communityError, setCommunityError] = useState("");
+    const [communityAnalysisByOption, setCommunityAnalysisByOption] =
+        useState({});
+    const [communityAnalysisLoading, setCommunityAnalysisLoading] =
+        useState(false);
+    const [reportLocation, setReportLocation] = useState(null);
+    const [selectingReportLocation, setSelectingReportLocation] =
+        useState(false);
+    const communityAnalysisRequestRef = useRef(0);
 
     useEffect(() => {
         getRoutes()
             .then(setRoutes)
             .catch(error => setPlanningError(error.message));
     }, []);
+
+    const loadCommunityReports = useCallback(async () => {
+        setCommunityLoading(true);
+
+        try {
+            setCommunityReports(
+                await getCommunityTrafficReports()
+            );
+            setCommunityError("");
+        }
+        catch (error) {
+            setCommunityError(error.message);
+        }
+        finally {
+            setCommunityLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const initialTimeoutId = setTimeout(
+            loadCommunityReports,
+            0
+        );
+
+        const intervalId = setInterval(
+            loadCommunityReports,
+            60_000
+        );
+
+        return () => {
+            clearTimeout(initialTimeoutId);
+            clearInterval(intervalId);
+        };
+    }, [loadCommunityReports]);
+
+    const analyzePlanTrafficOptions = useCallback(async planResult => {
+        const requestId = communityAnalysisRequestRef.current + 1;
+        const options = [
+            planResult?.bestOption,
+            ...(planResult?.alternatives ?? [])
+        ].filter(Boolean);
+
+        communityAnalysisRequestRef.current = requestId;
+        setCommunityAnalysisLoading(true);
+
+        const entries = await Promise.all(
+            options.map(async option => {
+                try {
+                    return [
+                        planOptionKey(option),
+                        await analyzeCommunityTrafficPlan(option)
+                    ];
+                }
+                catch {
+                    return null;
+                }
+            })
+        );
+
+        if (communityAnalysisRequestRef.current !== requestId) return;
+
+        setCommunityAnalysisByOption(
+            Object.fromEntries(entries.filter(Boolean))
+        );
+        setCommunityAnalysisLoading(false);
+    }, []);
+
+    useEffect(() => {
+        if (!plan) return undefined;
+
+        const timeoutId = setTimeout(
+            () => analyzePlanTrafficOptions(plan),
+            0
+        );
+
+        return () => clearTimeout(timeoutId);
+    }, [plan, communityReports, analyzePlanTrafficOptions]);
 
     useEffect(() => {
         const query = searchQuery.trim();
@@ -137,6 +235,42 @@ export default function Home() {
         catch (error) {
             setPlanningError(error.message);
         }
+    }
+
+    function handleUseCurrentReportLocation() {
+        if (!location) return;
+
+        setReportLocation(location);
+        setSelectingReportLocation(false);
+    }
+
+    function handleSelectReportLocationOnMap() {
+        setReportLocation(null);
+        setSelectingReportLocation(true);
+        setAllowMapDestinationSelection(false);
+    }
+
+    function handleTrafficLocationSelect(coordinates) {
+        setReportLocation(coordinates);
+        setSelectingReportLocation(false);
+    }
+
+    async function handleCommunityReportSubmit(report) {
+        try {
+            await createCommunityTrafficReport(report);
+            setReportLocation(null);
+            setSelectingReportLocation(false);
+            await loadCommunityReports();
+        }
+        catch (error) {
+            setCommunityError(error.message);
+            throw error;
+        }
+    }
+
+    function handleCommunityReportCancel() {
+        setReportLocation(null);
+        setSelectingReportLocation(false);
     }
 
     async function handleRouteChange(event) {
@@ -269,7 +403,10 @@ export default function Home() {
                     <button
                         type="button"
                         className={`map-toggle-button ${allowMapDestinationSelection ? "is-active" : ""}`}
-                        onClick={() => setAllowMapDestinationSelection(value => !value)}
+                        onClick={() => {
+                            setSelectingReportLocation(false);
+                            setAllowMapDestinationSelection(value => !value);
+                        }}
                         aria-pressed={allowMapDestinationSelection}
                         aria-label="Activar o desactivar selección de punto en el mapa"
                     >
@@ -386,6 +523,12 @@ export default function Home() {
                     error={planningError}
                     selectedOption={selectedPlanOption}
                     onSelectOption={handlePlanOptionSelect}
+                    communityAnalysisByOption={
+                        communityAnalysisByOption
+                    }
+                    communityAnalysisLoading={
+                        communityAnalysisLoading
+                    }
                 />
             </div>
 
@@ -396,6 +539,30 @@ export default function Home() {
                 destination={destination}
                 planOption={selectedPlanOption}
                 onDestinationSelect={allowMapDestinationSelection ? handleDestinationSelect : null}
+                communityReports={communityReports}
+                onTrafficLocationSelect={
+                    selectingReportLocation
+                        ? handleTrafficLocationSelect
+                        : null
+                }
+            />
+
+            <TrafficPanel
+                reports={communityReports}
+                loading={communityLoading}
+                error={communityError}
+                analysis={
+                    communityAnalysisByOption[
+                        planOptionKey(selectedPlanOption)
+                    ] ?? null
+                }
+                currentLocation={location}
+                reportLocation={reportLocation}
+                selectingOnMap={selectingReportLocation}
+                onUseCurrentLocation={handleUseCurrentReportLocation}
+                onSelectOnMap={handleSelectReportLocationOnMap}
+                onSubmitReport={handleCommunityReportSubmit}
+                onCancelReport={handleCommunityReportCancel}
             />
         </div>
     );

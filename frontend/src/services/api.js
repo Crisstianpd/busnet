@@ -83,6 +83,36 @@ export async function planTrip(origin, destination, options = {}) {
     return parseResponse(response);
 }
 
+export async function getCommunityTrafficReports() {
+    const response = await fetch(`${API}/traffic/community`);
+
+    return parseResponse(response);
+}
+
+export async function createCommunityTrafficReport(report) {
+    const response = await fetch(`${API}/traffic/report`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(report)
+    });
+
+    return parseResponse(response);
+}
+
+export async function analyzeCommunityTrafficPlan(option) {
+    const response = await fetch(`${API}/traffic/analyze-plan`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ option })
+    });
+
+    return parseResponse(response);
+}
+
 export async function startTrip(origin, destination) {
     const response = await fetch(`${API}/trip/start`, {
         method: "POST",
