@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import busnetBadge from "@ds/assets/logo/busnet-badge.svg";
 import { Icon } from "../ui";
 import "./RouteControlPanel.css";
@@ -54,8 +54,19 @@ export default function RouteControlPanel({
     const sheetDragHandled = useRef(false);
     const mobileSheetCollapsed = routeCalculated && !mobileSheetExpanded;
 
-    useEffect(() => {
-        panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    useLayoutEffect(() => {
+        const panel = panelRef.current;
+        if (!panel) return undefined;
+
+        const resetScroll = () => {
+            panel.scrollTop = 0;
+            panel.scrollLeft = 0;
+        };
+
+        resetScroll();
+        const frameId = window.requestAnimationFrame(resetScroll);
+
+        return () => window.cancelAnimationFrame(frameId);
     }, [routeCalculated, mobileSheetExpanded]);
 
     const collapseMobileSheet = () => {
@@ -105,6 +116,7 @@ export default function RouteControlPanel({
     };
 
     const handleCalculateRoute = () => {
+        panelRef.current?.scrollTo({ top: 0, behavior: "auto" });
         collapseMobileSheet();
         onCalculateRoute();
     };

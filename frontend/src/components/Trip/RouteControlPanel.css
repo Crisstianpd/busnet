@@ -379,14 +379,14 @@
     gap: var(--space-2);
     background: linear-gradient(
         135deg,
-        var(--ui-accent),
+        var(--busnet-green),
         var(--busnet-green-600)
     );
     color: var(--text-on-green);
     box-shadow:
         var(--shadow-md),
-        0 0 0 1px color-mix(in srgb, var(--ui-accent) 36%, transparent),
-        0 14px 30px color-mix(in srgb, var(--ui-accent) 18%, transparent);
+        0 0 0 1px color-mix(in srgb, var(--busnet-green) 44%, transparent),
+        0 14px 30px color-mix(in srgb, var(--busnet-green) 24%, transparent);
 }
 
 .route-control-primary:not(:disabled):hover,
@@ -396,13 +396,14 @@
 }
 
 .route-control-primary:disabled {
-    background: color-mix(in srgb, var(--ui-surface-soft) 72%, var(--ui-accent));
-    color: color-mix(in srgb, var(--ui-text) 76%, var(--ui-muted));
+    border: 1px solid color-mix(in srgb, var(--ui-border) 72%, var(--busnet-green));
+    background: color-mix(in srgb, var(--ui-surface-soft) 88%, var(--night));
+    color: var(--ui-muted);
     box-shadow:
-        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 10%, transparent),
-        0 0 0 1px color-mix(in srgb, var(--ui-border) 82%, transparent);
+        inset 0 1px 0 color-mix(in srgb, var(--text-primary) 12%, transparent),
+        0 10px 22px color-mix(in srgb, var(--night) 18%, transparent);
     cursor: not-allowed;
-    opacity: 0.78;
+    opacity: 1;
 }
 
 .route-control-trip-actions {
@@ -535,10 +536,13 @@
     .route-control-panel.is-planned {
         top: auto;
         bottom: max(var(--space-2), env(safe-area-inset-bottom));
+        display: flex;
+        flex-direction: column;
         max-height: min(48vh, 460px);
         gap: var(--space-2);
         border-radius: var(--radius-xl) var(--radius-xl) var(--radius-lg) var(--radius-lg);
         padding: var(--space-3);
+        scroll-padding-top: 0;
         animation: route-control-sheet-up var(--dur-base) var(--ease-emphasized);
     }
 
@@ -655,9 +659,12 @@
         order: -2;
         border-top: 0;
         padding-top: 0;
+        min-height: 0;
+        overflow: visible;
     }
 
     .route-control-panel.is-planned.is-collapsed {
+        height: clamp(164px, 22vh, 188px);
         max-height: clamp(164px, 22vh, 188px);
         overflow: hidden;
     }
@@ -676,6 +683,7 @@
 
     .route-control-panel.is-planned.is-collapsed .route-control-trip-options {
         order: -3;
+        overflow: hidden;
     }
 
     .route-control-panel.is-planned.is-collapsed .trip-options-list {

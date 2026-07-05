@@ -6,6 +6,10 @@
     --ui-muted: #68778b;
     --ui-border: #dce6f0;
     --ui-shadow: rgba(32, 65, 98, 0.18);
+    --ui-accent: var(--busnet-green);
+    --ui-accent-soft: color-mix(in srgb, var(--busnet-green) 14%, transparent);
+    --ui-warning: var(--amber);
+    --ui-danger: var(--red);
 }
 
 [data-theme="dark"] {
@@ -16,6 +20,7 @@
     --ui-muted: #a8b7c9;
     --ui-border: #34465d;
     --ui-shadow: rgba(0, 0, 0, 0.42);
+    --ui-accent-soft: color-mix(in srgb, var(--busnet-green) 18%, transparent);
 }
 
 .theme-toggle {
