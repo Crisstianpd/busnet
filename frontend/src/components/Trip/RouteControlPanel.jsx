@@ -1,3 +1,4 @@
+import busnetBadge from "@ds/assets/logo/busnet-badge.svg";
 import "./RouteControlPanel.css";
 
 function LocationIcon({ type }) {
@@ -38,8 +39,6 @@ export default function RouteControlPanel({
     locationAvailable,
     locationLoading,
     onRequestLocation,
-    animationsEnabled,
-    onToggleAnimations,
     routes,
     selectedRoute,
     onRouteChange,
@@ -49,11 +48,24 @@ export default function RouteControlPanel({
     const showStartTripAction = false;
 
     return (
-        <section className="route-control-panel" aria-label="Planificador de viaje">
+        <section
+            className={`route-control-panel ${
+                routeCalculated ? "is-planned" : ""
+            }`}
+            aria-label="Planificador de viaje"
+        >
             <header className="route-control-brand">
-                <div>
-                    <span className="route-control-eyebrow">Movilidad inteligente</span>
-                    <h1>BUSNET</h1>
+                <div className="route-control-brand-lockup">
+                    <img
+                        className="route-control-logo"
+                        src={busnetBadge}
+                        alt=""
+                        aria-hidden="true"
+                    />
+                    <div>
+                        <span className="route-control-eyebrow">Movilidad inteligente</span>
+                        <h1>BUSNET</h1>
+                    </div>
                 </div>
                 <span className="route-control-badge">El Salvador</span>
             </header>
@@ -70,19 +82,6 @@ export default function RouteControlPanel({
                         {locationLoading ? "Detectando ubicación…" : "Activar ubicación"}
                     </button>
                 )}
-                <button
-                    type="button"
-                    className={`route-control-utility ${
-                        animationsEnabled ? "is-active" : ""
-                    }`}
-                    onClick={onToggleAnimations}
-                    aria-pressed={animationsEnabled}
-                >
-                    <span aria-hidden="true">{animationsEnabled ? "✦" : "—"}</span>
-                    {animationsEnabled
-                        ? "Desactivar animaciones"
-                        : "Activar animaciones"}
-                </button>
             </div>
 
             <div className="route-control-fields">
@@ -209,6 +208,8 @@ export default function RouteControlPanel({
                         <span className="route-control-spinner" aria-hidden="true" />
                         Calculando ruta…
                     </>
+                ) : routeCalculated ? (
+                    "Actualizar ruta"
                 ) : (
                     "Calcular ruta"
                 )}
@@ -240,6 +241,8 @@ export default function RouteControlPanel({
                 <div className="route-control-message">{tripMessage}</div>
             )}
 
+            {children && <div className="route-control-trip-options">{children}</div>}
+
             <details className="route-control-manual">
                 <summary>Explorar una ruta manualmente</summary>
                 <label htmlFor="route-select">Ruta de bus</label>
@@ -256,8 +259,6 @@ export default function RouteControlPanel({
                     ))}
                 </select>
             </details>
-
-            {children && <div className="route-control-trip-options">{children}</div>}
         </section>
     );
 }

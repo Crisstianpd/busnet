@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "../ui";
 import "./TripOptions.css";
 
 const trafficLevels = {
@@ -14,26 +15,39 @@ function optionKey(option) {
         : "";
 }
 
-function formatDistance(value) {
-    if (!Number.isFinite(value)) return "No disponible";
+function formatDistance(value, fallback = "No disponible") {
+    if (!Number.isFinite(value)) return fallback;
+
     const rounded = Math.round(value);
-    return rounded <= 1 ? "Sobre la ruta (≤ 1 m)" : `${rounded} m`;
+
+    if (rounded <= 1) return "Sobre la ruta";
+    if (rounded >= 1000) {
+        const kilometers = rounded / 1000;
+
+        return `${kilometers >= 10 ? Math.round(kilometers) : kilometers.toFixed(1)} km`;
+    }
+
+    return `${rounded} m`;
 }
 
 function formatPoint(point) {
     if (
         !Number.isFinite(point?.latitude) ||
         !Number.isFinite(point?.longitude)
-    ) return "No disponible";
+    ) return "Coordenadas no disponibles";
 
-    return `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
+    return `GPS ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
 }
 
-function routeName(option, index) {
-    return (
-        option.routeDetails?.[index]?.name ||
-        `Ruta ${option.routes?.[index] ?? ""}`.trim()
-    );
+function routeDetail(option, index) {
+    const route = option.routes?.[index] ?? "";
+    const detail = option.routeDetails?.[index] ?? {};
+
+    return {
+        route,
+        name: detail.name || `Ruta ${route}`.trim(),
+        color: detail.color || `var(--route-${(index % 8) + 1})`
+    };
 }
 
 function tripCost(option) {
@@ -70,10 +84,149 @@ function estimatedTime(option, trafficLevel) {
 
 function tripTypeLabel(option) {
     if (option.type === "walk") return "Caminando";
-    if (option.type === "direct") return "Viaje directo";
+    if (option.type === "direct") return "Directa";
+
     return (option.transferCount ?? 1) === 1
         ? "Con transbordo"
-        : "Con transbordos";
+        : `${option.transferCount ?? 2} transbordos`;
+}
+
+function busLegs(option) {
+    return (option.legs ?? []).filter(leg => leg.type === "bus");
+}
+
+function RoutePill({ detail, compact = false }) {
+    return (
+        <span
+            className={`trip-route-pill ${compact ? "is-compact" : ""}`}
+            style={{ "--route-color": detail.color }}
+        >
+            {detail.route}
+        </span>
+    );
+}
+
+function RouteChain({ option }) {
+    if (option.type === "walk") {
+        return (
+            <div className="trip-route-chain">
+                <span className="trip-chain-node is-origin">Inicio</span>
+                <Icon name="chevron-right" size={13} />
+                <span className="trip-chain-walk">
+                    Caminar {formatDistance(option.walkingDistanceMeters)}
+                </span>
+                <Icon name="chevron-right" size={13} />
+                <span className="trip-chain-node is-destination">Destino</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="trip-route-chain">
+            <span className="trip-chain-node is-origin">Inicio</span>
+            <Icon name="chevron-right" size={13} />
+            <span className="trip-chain-walk">
+                {formatDistance(option.boardingDistanceMeters)}
+            </span>
+            <Icon name="chevron-right" size={13} />
+            {(option.routes ?? []).map((route, index) => {
+                const detail = routeDetail(option, index);
+
+                return (
+                    <span
+                        className="trip-chain-segment"
+                        key={`${route}-${index}`}
+                    >
+                        <RoutePill detail={detail} compact />
+                        {index < (option.routes ?? []).length - 1 && (
+                            <Icon name="chevron-right" size={13} />
+                        )}
+                    </span>
+                );
+            })}
+            <Icon name="chevron-right" size={13} />
+            <span className="trip-chain-walk">
+                {formatDistance(option.destinationDistanceMeters)}
+            </span>
+            <Icon name="chevron-right" size={13} />
+            <span className="trip-chain-node is-destination">Destino</span>
+        </div>
+    );
+}
+
+function buildSteps(option) {
+    if (option.type === "walk") {
+        return [{
+            type: "walk",
+            title: "Caminá hasta el destino",
+            detail: formatDistance(option.walkingDistanceMeters),
+            meta: option.reason,
+            icon: "footprints"
+        }];
+    }
+
+    const transfers = option.transferPoints ?? option.transfers ?? [];
+    const busDistances = busLegs(option);
+    const steps = [{
+        type: "walk",
+        title: "Caminá al punto de abordaje",
+        detail: formatDistance(option.boardingDistanceMeters),
+        meta: formatPoint(option.boardingPoint),
+        icon: "footprints"
+    }];
+
+    (option.routes ?? []).forEach((route, index) => {
+        const detail = routeDetail(option, index);
+        const busDistance = busDistances[index]?.distanceMeters;
+
+        steps.push({
+            type: "bus",
+            title: `Tomá ${detail.name}`,
+            routeDetail: detail,
+            detail: formatDistance(busDistance, "Tramo en bus"),
+            meta: index === 0 ? "Ruta inicial" : "Continuación del viaje",
+            icon: "bus"
+        });
+
+        if (transfers[index]) {
+            const transfer = transfers[index];
+
+            steps.push({
+                type: "transfer",
+                title: `Transbordá a ${transfer.toRoute}`,
+                detail: formatDistance(transfer.walkingDistanceMeters),
+                meta: formatPoint(transfer.fromPoint),
+                icon: "repeat"
+            });
+        }
+    });
+
+    steps.push({
+        type: "destination",
+        title: "Bajate cerca del destino",
+        detail: `${formatDistance(option.destinationDistanceMeters)} a pie`,
+        meta: formatPoint(option.dropoffPoint),
+        icon: "flag"
+    });
+
+    return steps;
+}
+
+function TripStep({ step, last }) {
+    return (
+        <li className={`trip-step is-${step.type} ${last ? "is-last" : ""}`}>
+            <span className="trip-step-marker" aria-hidden="true">
+                {step.type === "bus" && step.routeDetail
+                    ? <RoutePill detail={step.routeDetail} compact />
+                    : <Icon name={step.icon} size={15} />}
+            </span>
+            <span className="trip-step-body">
+                <strong>{step.title}</strong>
+                <span>{step.detail}</span>
+                {step.meta && <small>{step.meta}</small>}
+            </span>
+        </li>
+    );
 }
 
 function OptionCard({
@@ -90,18 +243,20 @@ function OptionCard({
     const trafficLevel = communityAnalysis?.trafficLevel ?? "none";
     const minutes = estimatedTime(option, trafficLevel);
     const cost = tripCost(option);
-    const transfers = option.transferPoints ?? [];
     const busCount = option.type === "walk"
         ? 0
         : option.routes?.length ?? 0;
     const transferCount = option.type === "walk"
         ? 0
         : Math.max(0, busCount - 1);
-    const busLabel = `${busCount} ${busCount === 1 ? "bus" : "buses"}`;
-    const transferLabel =
-        `${transferCount} ${
-            transferCount === 1 ? "transbordo" : "transbordos"
-        }`;
+    const routeSummary = option.type === "walk"
+        ? "Caminar"
+        : (option.routes ?? []).join(" + ");
+    const walkingDistance = formatDistance(option.walkingDistanceMeters);
+    const steps = buildSteps(option);
+    const trafficLabel = communityAnalysisLoading && !communityAnalysis
+        ? "Analizando tráfico"
+        : trafficLevels[trafficLevel]?.label;
 
     return (
         <article
@@ -115,134 +270,87 @@ function OptionCard({
                 onClick={onToggle}
                 aria-expanded={expanded}
             >
-                <span className="trip-option-route-mark" aria-hidden="true">
-                    {option.type === "walk" ? "↟" : primary ? "★" : "→"}
-                </span>
-                <span className="trip-option-heading">
-                    <small>
-                        {primary
-                            ? "Ruta recomendada · Alternativa 1"
-                            : `Alternativa ${optionIndex + 1}`}
-                    </small>
-                    <strong>
-                        {option.type === "walk"
-                            ? "Caminar hasta el destino"
-                            : (option.routes ?? []).join(" → ")}
-                    </strong>
-                    <span>
-                        {tripTypeLabel(option)} · {busLabel} ·{" "}
-                        {transferLabel} · ${cost.toFixed(2)}
+                <span className="trip-option-main">
+                    <span className="trip-option-label-row">
+                        <span className="trip-option-rank">
+                            {primary ? "Mejor ruta" : `Alternativa ${optionIndex + 1}`}
+                        </span>
+                        <span className={`trip-traffic-pill is-${trafficLevel}`}>
+                            {trafficLabel}
+                        </span>
                     </span>
+                    <span className="trip-option-title-row">
+                        <strong>{routeSummary}</strong>
+                    </span>
+                    <RouteChain option={option} />
                 </span>
-                <span className="trip-option-quick">
-                    <b>${cost.toFixed(2)}</b>
-                    <small>
-                        {minutes ? `≈ ${minutes} min` : "Tiempo no disponible"}
-                    </small>
-                </span>
-                <span className="trip-option-chevron" aria-hidden="true">
-                    {expanded ? "⌃" : "⌄"}
+
+                <span className="trip-option-total">
+                    <b>{minutes ? minutes : "—"}</b>
+                    <small>min</small>
                 </span>
             </button>
 
+            <div className="trip-option-metrics" aria-label="Resumen del viaje">
+                <div>
+                    <dt>Pasaje</dt>
+                    <dd>${cost.toFixed(2)}</dd>
+                </div>
+                <div>
+                    <dt>Transbordos</dt>
+                    <dd>{transferCount}</dd>
+                </div>
+                <div>
+                    <dt>Caminata</dt>
+                    <dd>{walkingDistance}</dd>
+                </div>
+                <div>
+                    <dt>Tiempo</dt>
+                    <dd>{minutes ? `${minutes} min` : "No disponible"}</dd>
+                </div>
+                <div>
+                    <dt>Tipo de viaje</dt>
+                    <dd>{tripTypeLabel(option)}</dd>
+                </div>
+                <div>
+                    <dt>Búsqueda</dt>
+                    <dd>{formatDistance(option.radiusUsedMeters)}</dd>
+                </div>
+            </div>
+
             {expanded && (
                 <div className="trip-option-details">
-                    <div className="trip-option-badges">
-                        <span className={`is-${trafficLevel}`}>
-                            {communityAnalysisLoading && !communityAnalysis
-                                ? "Analizando tráfico…"
-                                : trafficLevels[trafficLevel]?.label}
-                        </span>
-                        <span>{tripTypeLabel(option)}</span>
+                    <div className="trip-option-section-heading">
+                        <span>Cómo se toma</span>
+                        <small>
+                            {option.type === "walk"
+                                ? "Sin buses"
+                                : `${busCount} ${
+                                    busCount === 1 ? "bus" : "buses"
+                                }`}
+                        </small>
                     </div>
 
-                    {option.type !== "walk" && (
-                        <div className="trip-option-route-list">
-                            {(option.routes ?? []).map((route, index) => (
-                                <div key={`${route}-${index}`}>
-                                    <i>{index + 1}</i>
-                                    <span>
-                                        <small>
-                                            {index === 0
-                                                ? "Ruta inicial"
-                                                : "Continuar en"}
-                                        </small>
-                                        <b>{routeName(option, index)}</b>
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <dl className="trip-option-metrics">
-                        <div>
-                            <dt>Costo promedio</dt>
-                            <dd>${cost.toFixed(2)}</dd>
-                        </div>
-                        <div>
-                            <dt>Tiempo promedio</dt>
-                            <dd>
-                                {minutes
-                                    ? `${minutes} min aprox.`
-                                    : "No disponible"}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Distancia caminando</dt>
-                            <dd>
-                                {formatDistance(option.walkingDistanceMeters)}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Radio de búsqueda</dt>
-                            <dd>{formatDistance(option.radiusUsedMeters)}</dd>
-                        </div>
-                    </dl>
-
-                    {option.type !== "walk" && (
-                        <div className="trip-option-points">
-                            <p>
-                                <b>Punto de abordaje aproximado</b>
-                                <span>{formatPoint(option.boardingPoint)}</span>
-                                <small>
-                                    A {formatDistance(option.boardingDistanceMeters)}
-                                </small>
-                            </p>
-                            {transfers.map(transfer => (
-                                <p key={`${transfer.order}-${transfer.fromRoute}`}>
-                                    <b>
-                                        Punto de transbordo aproximado{" "}
-                                        {transfer.order}
-                                    </b>
-                                    <span>{formatPoint(transfer.fromPoint)}</span>
-                                    <small>
-                                        De {transfer.fromRoute} a {transfer.toRoute}
-                                    </small>
-                                </p>
-                            ))}
-                            <p>
-                                <b>Punto de descenso aproximado</b>
-                                <span>{formatPoint(option.dropoffPoint)}</span>
-                                <small>
-                                    A {formatDistance(
-                                        option.destinationDistanceMeters
-                                    )} del destino
-                                </small>
-                            </p>
-                        </div>
-                    )}
+                    <ol className="trip-stepper">
+                        {steps.map((step, index) => (
+                            <TripStep
+                                key={`${step.type}-${step.title}-${index}`}
+                                step={step}
+                                last={index === steps.length - 1}
+                            />
+                        ))}
+                    </ol>
 
                     {communityAnalysis?.trafficLevel === "high" && (
                         <div className="trip-option-warning">
-                            Hay tráfico alto reportado por la comunidad en esta ruta.
+                            Hay tráfico alto reportado por la comunidad.
                         </div>
                     )}
 
                     {suggestedAlternative && (
                         <div className="trip-option-suggestion">
-                            Considera la alternativa{" "}
-                            <b>{suggestedAlternative.routes.join(" → ")}</b>{" "}
-                            para evitar tráfico.
+                            Alternativa sugerida:{" "}
+                            <b>{suggestedAlternative.routes.join(" + ")}</b>
                         </div>
                     )}
 
@@ -270,7 +378,7 @@ export default function TripOptions({
     communityAnalysisByOption = {},
     communityAnalysisLoading = false
 }) {
-    const [expandedKey, setExpandedKey] = useState("");
+    const [expandedKey, setExpandedKey] = useState(null);
 
     if (loading) {
         return <div className="trip-options-status">Calculando rutas cercanas…</div>;
@@ -287,6 +395,14 @@ export default function TripOptions({
     }
 
     const options = [plan.bestOption, ...(plan.alternatives ?? [])];
+    const bestKey = optionKey(plan.bestOption);
+    const expandedOptionKey = options.some(
+        option => optionKey(option) === expandedKey
+    )
+        ? expandedKey
+        : expandedKey === ""
+            ? ""
+            : bestKey;
     const suggestedAlternativeFor = option => {
         const current = communityAnalysisByOption[optionKey(option)];
         if (current?.trafficLevel !== "high") return null;
@@ -326,7 +442,7 @@ export default function TripOptions({
                         optionIndex={index}
                         primary={index === 0}
                         selected={optionKey(selectedOption) === key}
-                        expanded={expandedKey === key}
+                        expanded={expandedOptionKey === key}
                         onToggle={() => {
                             onSelectOption(option);
                             setExpandedKey(current =>

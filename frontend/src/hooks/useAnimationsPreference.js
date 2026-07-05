@@ -1,11 +1,7 @@
-import { useCallback, useState } from "react";
-
-const STORAGE_KEY = "animationsEnabled";
+import { useEffect, useState } from "react";
 
 function initialPreference() {
-    const stored = localStorage.getItem(STORAGE_KEY);
-
-    if (stored !== null) return stored !== "false";
+    if (typeof window === "undefined") return true;
 
     return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -14,13 +10,13 @@ export default function useAnimationsPreference() {
     const [animationsEnabled, setAnimationsEnabled] =
         useState(initialPreference);
 
-    const toggleAnimations = useCallback(() => {
-        setAnimationsEnabled(current => {
-            const next = !current;
-            localStorage.setItem(STORAGE_KEY, String(next));
-            return next;
-        });
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const handleChange = () => setAnimationsEnabled(!mediaQuery.matches);
+
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
 
-    return { animationsEnabled, toggleAnimations };
+    return animationsEnabled;
 }
