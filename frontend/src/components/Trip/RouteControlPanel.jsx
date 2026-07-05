@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import busnetBadge from "@ds/assets/logo/busnet-badge.svg";
+import { Icon } from "../ui";
 import "./RouteControlPanel.css";
 
 function LocationIcon({ type }) {
@@ -39,8 +41,6 @@ export default function RouteControlPanel({
     locationAvailable,
     locationLoading,
     onRequestLocation,
-    animationsEnabled,
-    onToggleAnimations,
     routes,
     selectedRoute,
     onRouteChange,
@@ -48,55 +48,112 @@ export default function RouteControlPanel({
 }) {
     const canCalculate = Boolean(origin && destination) && !planning;
     const showStartTripAction = false;
-    const [collapsed, setCollapsed] = useState(false);
+    const [mobileSheetExpanded, setMobileSheetExpanded] = useState(false);
+    const sheetDragStartY = useRef(null);
+    const sheetDragHandled = useRef(false);
+    const mobileSheetCollapsed = routeCalculated && !mobileSheetExpanded;
 
-    if (collapsed && routeCalculated) {
-        return (
-            <section
-                className="route-control-panel is-collapsed"
-                aria-label="Planificador de viaje comprimido"
-            >
-                <button
-                    type="button"
-                    className="route-control-expand"
-                    onClick={() => setCollapsed(false)}
-                    aria-expanded="false"
-                    title="Mostrar panel de viaje"
-                >
-                    <span className="route-control-expand-icon" aria-hidden="true">
-                        ›
-                    </span>
-                    <span>
-                        <small>BUSNET</small>
-                        Ver viaje
-                    </span>
-                </button>
-            </section>
-        );
-    }
+    const collapseMobileSheet = () => {
+        if (typeof window !== "undefined" && window.innerWidth <= 720) {
+            setMobileSheetExpanded(false);
+        }
+    };
+
+    const toggleMobileSheet = () => {
+        if (sheetDragHandled.current) {
+            sheetDragHandled.current = false;
+            return;
+        }
+
+        setMobileSheetExpanded(current => !current);
+    };
+
+    const handleSheetPointerDown = event => {
+        if (
+            !routeCalculated ||
+            typeof window === "undefined" ||
+            window.innerWidth > 720
+        ) return;
+
+        sheetDragStartY.current = event.clientY;
+        sheetDragHandled.current = false;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
+
+    const handleSheetPointerUp = event => {
+        if (sheetDragStartY.current === null) return;
+
+        const deltaY = event.clientY - sheetDragStartY.current;
+
+        sheetDragStartY.current = null;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+        if (Math.abs(deltaY) < 24) return;
+
+        sheetDragHandled.current = true;
+        setMobileSheetExpanded(deltaY < 0);
+    };
+
+    const handleSheetPointerCancel = event => {
+        sheetDragStartY.current = null;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+    };
+
+    const handleCalculateRoute = () => {
+        collapseMobileSheet();
+        onCalculateRoute();
+    };
+
+    const handleCancelTrip = () => {
+        setMobileSheetExpanded(false);
+        onCancelTrip();
+    };
 
     return (
-        <section className="route-control-panel" aria-label="Planificador de viaje">
+        <section
+            className={`route-control-panel ${
+                routeCalculated ? "is-planned" : ""
+            } ${mobileSheetCollapsed ? "is-collapsed" : ""}`}
+            aria-label="Planificador de viaje"
+        >
+            {routeCalculated && (
+                <button
+                    type="button"
+                    className="route-control-sheet-handle"
+                    aria-label={
+                        mobileSheetCollapsed
+                            ? "Mostrar detalles de la ruta"
+                            : "Minimizar detalles de la ruta"
+                    }
+                    aria-expanded={!mobileSheetCollapsed}
+                    onClick={toggleMobileSheet}
+                    onPointerDown={handleSheetPointerDown}
+                    onPointerUp={handleSheetPointerUp}
+                    onPointerCancel={handleSheetPointerCancel}
+                >
+                    <span className="route-control-sheet-grip" aria-hidden="true" />
+                    <Icon
+                        name={mobileSheetCollapsed ? "chevron-up" : "chevron-down"}
+                        size={18}
+                        strokeWidth={2.6}
+                    />
+                </button>
+            )}
+
             <header className="route-control-brand">
-                <div>
-                    <span className="route-control-eyebrow">Movilidad inteligente</span>
-                    <h1>BUSNET</h1>
+                <div className="route-control-brand-lockup">
+                    <img
+                        className="route-control-logo"
+                        src={busnetBadge}
+                        alt=""
+                        aria-hidden="true"
+                    />
+                    <div>
+                        <span className="route-control-eyebrow">Movilidad inteligente</span>
+                        <h1>BUSNET</h1>
+                    </div>
                 </div>
-                <div className="route-control-brand-actions">
-                    {routeCalculated && (
-                        <button
-                            type="button"
-                            className="route-control-collapse"
-                            onClick={() => setCollapsed(true)}
-                            aria-expanded="true"
-                            title="Comprimir panel para ver el mapa"
-                        >
-                            <span aria-hidden="true">‹</span>
-                            Comprimir
-                        </button>
-                    )}
-                    <span className="route-control-badge">El Salvador</span>
-                </div>
+                <span className="route-control-badge">El Salvador</span>
             </header>
 
             <div className="route-control-utilities">
@@ -111,19 +168,6 @@ export default function RouteControlPanel({
                         {locationLoading ? "Detectando ubicación…" : "Activar ubicación"}
                     </button>
                 )}
-                <button
-                    type="button"
-                    className={`route-control-utility ${
-                        animationsEnabled ? "is-active" : ""
-                    }`}
-                    onClick={onToggleAnimations}
-                    aria-pressed={animationsEnabled}
-                >
-                    <span aria-hidden="true">{animationsEnabled ? "✦" : "—"}</span>
-                    {animationsEnabled
-                        ? "Desactivar animaciones"
-                        : "Activar animaciones"}
-                </button>
             </div>
 
             <div className="route-control-fields">
@@ -167,7 +211,7 @@ export default function RouteControlPanel({
                         type="search"
                         value={searchQuery}
                         placeholder={
-                            destinationLabel || "Busca un lugar o selecciónalo en el mapa"
+                            destinationLabel || "Busca destino o elige en mapa"
                         }
                         onChange={onSearchChange}
                         onFocus={onDestinationFocus}
@@ -242,10 +286,7 @@ export default function RouteControlPanel({
             <button
                 type="button"
                 className="route-control-primary"
-                onClick={() => {
-                    setCollapsed(false);
-                    onCalculateRoute();
-                }}
+                onClick={handleCalculateRoute}
                 disabled={!canCalculate}
             >
                 {planning ? (
@@ -253,6 +294,8 @@ export default function RouteControlPanel({
                         <span className="route-control-spinner" aria-hidden="true" />
                         Calculando ruta…
                     </>
+                ) : routeCalculated ? (
+                    "Actualizar ruta"
                 ) : (
                     "Calcular ruta"
                 )}
@@ -273,10 +316,7 @@ export default function RouteControlPanel({
                     <button
                         type="button"
                         className="route-control-ghost"
-                        onClick={() => {
-                            setCollapsed(false);
-                            onCancelTrip();
-                        }}
+                        onClick={handleCancelTrip}
                     >
                         Limpiar viaje
                     </button>
@@ -286,6 +326,8 @@ export default function RouteControlPanel({
             {tripMessage && (
                 <div className="route-control-message">{tripMessage}</div>
             )}
+
+            {children && <div className="route-control-trip-options">{children}</div>}
 
             <details className="route-control-manual">
                 <summary>Explorar una ruta manualmente</summary>
@@ -303,8 +345,6 @@ export default function RouteControlPanel({
                     ))}
                 </select>
             </details>
-
-            {children && <div className="route-control-trip-options">{children}</div>}
         </section>
     );
 }

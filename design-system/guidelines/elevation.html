@@ -1,0 +1,15 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Elevación · Sombras" subtitle="Sombras suaves sobre el mapa noche + glow de acento" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;background:var(--night);font-family:var(--font-ui);padding:28px;display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .box{width:96px;height:64px;background:var(--surface-raised);border-radius:var(--radius-lg)}
+  .nm{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary)}
+</style></head><body>
+  <div class="cell"><div class="box" style="box-shadow:var(--shadow-sm)"></div><div class="nm">sm</div></div>
+  <div class="cell"><div class="box" style="box-shadow:var(--shadow-md)"></div><div class="nm">md</div></div>
+  <div class="cell"><div class="box" style="box-shadow:var(--shadow-lg)"></div><div class="nm">lg</div></div>
+  <div class="cell"><div class="box" style="box-shadow:var(--glow-green)"></div><div class="nm">glow-green</div></div>
+  <div class="cell"><div class="box" style="box-shadow:var(--glow-premium);background:var(--amber)"></div><div class="nm">glow-premium</div></div>
+</body></html>

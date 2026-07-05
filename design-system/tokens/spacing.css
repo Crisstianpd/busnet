@@ -1,0 +1,29 @@
+/* ============================================================
+   BusNET · Spacing & layout tokens
+   4px base grid. Generous touch targets for street use.
+   ============================================================ */
+
+:root {
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Touch targets — never below 44px for on-street use */
+  --touch-min: 44px;
+  --touch-comfortable: 52px;   /* big primary buttons */
+
+  /* Layout */
+  --mobile-width: 375px;
+  --gutter: 16px;              /* mobile screen side gutter */
+  --sheet-handle: 36px;       /* grabber width */
+  --tabbar-height: 64px;
+  --dashboard-max: 1440px;
+}

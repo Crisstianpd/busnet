@@ -32,8 +32,7 @@ export default function Home() {
         error: locationError,
         requestLocation
     } = useLocation();
-    const { animationsEnabled, toggleAnimations } =
-        useAnimationsPreference();
+    const animationsEnabled = useAnimationsPreference();
     const { theme, resolvedTheme, setTheme } = useTheme();
     const [routes, setRoutes] = useState([]);
     const [selectedRoute, setSelectedRoute] = useState("");
@@ -516,8 +515,6 @@ export default function Home() {
                 locationAvailable={Boolean(location)}
                 locationLoading={locationLoading}
                 onRequestLocation={handleRequestLocation}
-                animationsEnabled={animationsEnabled}
-                onToggleAnimations={toggleAnimations}
                 routes={routes}
                 selectedRoute={selectedRoute}
                 onRouteChange={handleRouteChange}

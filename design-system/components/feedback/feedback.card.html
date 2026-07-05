@@ -1,0 +1,55 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Badge · Toast · Spinner · Skeleton" subtitle="Route / Premium / EN VIVO pills, alerts, loaders" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; background: var(--night); font-family: var(--font-ui); padding: 24px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { Badge, Toast, Spinner, Skeleton } = window.BusNETDesignSystem_abb9a1;
+  function Demo() {
+    return (
+      <div>
+        <div className="row">
+          <Badge variant="route" color="var(--route-1)">30B</Badge>
+          <Badge variant="route" color="var(--route-6)">7D</Badge>
+          <Badge variant="route" color="var(--route-4)">42</Badge>
+          <Badge variant="premium">Premium</Badge>
+          <Badge variant="live">En vivo</Badge>
+        </div>
+        <div className="row">
+          <Badge variant="success" icon="check">A tiempo</Badge>
+          <Badge variant="warning" icon="triangle-alert">Retraso</Badge>
+          <Badge variant="danger" icon="triangle-alert">Fuera de ruta</Badge>
+          <Badge variant="neutral">Detenido</Badge>
+        </div>
+        <div className="cols">
+          <Toast tone="success" title="Ruta iniciada" message="Buen viaje. Te avisamos al llegar a tu parada." onClose={()=>{}} />
+          <Toast tone="warning" title="Retraso en la 7D" message="Llega 4 min más tarde de lo previsto." />
+        </div>
+        <div className="row" style={{marginTop:18, marginBottom:0, gap:20}}>
+          <Spinner size={22} />
+          <Spinner size={28} tone="amber" />
+          <div style={{flex:1, display:"flex", flexDirection:"column", gap:8, maxWidth:280}}>
+            <Skeleton height={16} width="70%" />
+            <Skeleton height={44} radius="var(--radius-lg)" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>
+</body>
+</html>

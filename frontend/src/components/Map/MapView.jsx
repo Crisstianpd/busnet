@@ -25,11 +25,19 @@ function toLngLat(location) {
     return [location.longitude, location.latitude];
 }
 
+function tokenValue(name) {
+    if (typeof document === "undefined") return `var(${name})`;
+
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(name)
+        .trim() || `var(${name})`;
+}
+
 function getRouteColor(geojson) {
     return (
         geojson?.properties?.color ||
         geojson?.features?.[0]?.properties?.color ||
-        "#2563EB"
+        tokenValue("--info")
     );
 }
 
@@ -40,6 +48,138 @@ function getRouteName(geojson, index) {
         geojson?.properties?.route ||
         `Ruta ${index + 1}`
     );
+}
+
+function fitBoundsPadding({ planned = false } = {}) {
+    if (typeof window === "undefined") {
+        return {
+            top: 96,
+            right: 88,
+            bottom: 96,
+            left: 500
+        };
+    }
+
+    const isMobile = window.innerWidth <= 720;
+
+    if (!isMobile) {
+        return {
+            top: 96,
+            right: 88,
+            bottom: 96,
+            left: 500
+        };
+    }
+
+    const top = window.innerWidth <= 420 ? 76 : 88;
+    const side = window.innerWidth <= 420 ? 28 : 42;
+    const availableBottom = Math.max(180, window.innerHeight - top - 160);
+    const targetBottom = planned
+        ? Math.round(window.innerHeight * 0.32)
+        : 110;
+
+    return {
+        top,
+        right: side,
+        bottom: Math.min(targetBottom, 340, availableBottom),
+        left: side
+    };
+}
+
+function planFocusCoordinates(planOption, location, destination) {
+    const transfers = planOption?.transferPoints?.length > 0
+        ? planOption.transferPoints
+        : planOption?.transferFromPoint || planOption?.transferToPoint
+            ? [{
+                fromPoint: planOption.transferFromPoint,
+                toPoint: planOption.transferToPoint
+            }]
+            : [];
+    const points = [
+        location,
+        planOption?.boardingPoint,
+        ...transfers.flatMap(transfer => [
+            transfer.fromPoint,
+            transfer.toPoint
+        ]),
+        planOption?.dropoffPoint,
+        destination
+    ];
+
+    return points
+        .filter(point =>
+            Number.isFinite(point?.latitude) &&
+            Number.isFinite(point?.longitude)
+        )
+        .map(toLngLat);
+}
+
+function connectionFeature(from, to, label) {
+    if (
+        !Number.isFinite(from?.latitude) ||
+        !Number.isFinite(from?.longitude) ||
+        !Number.isFinite(to?.latitude) ||
+        !Number.isFinite(to?.longitude)
+    ) return null;
+
+    return {
+        type: "Feature",
+        properties: {
+            walking: true,
+            name: label
+        },
+        geometry: {
+            type: "LineString",
+            coordinates: [
+                toLngLat(from),
+                toLngLat(to)
+            ]
+        }
+    };
+}
+
+function plannedWalkingConnections(planOption, location, destination) {
+    if (!planOption || planOption.type === "walk") return null;
+
+    const transfers = planOption.transferPoints?.length > 0
+        ? planOption.transferPoints
+        : planOption.transferFromPoint || planOption.transferToPoint
+            ? [{
+                fromPoint: planOption.transferFromPoint,
+                toPoint: planOption.transferToPoint
+            }]
+            : [];
+    const features = [
+        connectionFeature(
+            location,
+            planOption.boardingPoint,
+            "Caminata al punto de abordaje"
+        ),
+        ...transfers.map((transfer, index) =>
+            connectionFeature(
+                transfer.fromPoint,
+                transfer.toPoint,
+                `Caminata de transbordo ${index + 1}`
+            )
+        ),
+        connectionFeature(
+            planOption.dropoffPoint,
+            destination,
+            "Caminata al destino"
+        )
+    ].filter(Boolean);
+
+    if (features.length === 0) return null;
+
+    return {
+        type: "FeatureCollection",
+        properties: {
+            name: "Conexiones caminando",
+            color: tokenValue("--info"),
+            walking: true
+        },
+        features
+    };
 }
 
 function animateMarkerIn(marker, enabled) {
@@ -113,11 +253,17 @@ function createJourneyMarkerElement(type, label) {
     return element;
 }
 
-const communitySeverityColors = {
-    low: "#22C55E",
-    medium: "#FACC15",
-    high: "#EF4444"
+const communitySeverityTokens = {
+    low: "--busnet-green",
+    medium: "--amber",
+    high: "--red"
 };
+
+function communitySeverityColor(severity) {
+    return tokenValue(
+        communitySeverityTokens[severity] ?? "--text-secondary"
+    );
+}
 
 const communityTypeLabels = {
     traffic: "Tráfico",
@@ -158,11 +304,11 @@ function createCommunityPopup(report) {
         "Tráfico reportado por la comunidad. Información aproximada y no oficial.";
 
     details.style.marginTop = "4px";
-    details.style.color = "#475569";
+    details.style.color = "var(--text-secondary)";
     description.style.marginTop = "7px";
     disclaimer.style.display = "block";
     disclaimer.style.marginTop = "8px";
-    disclaimer.style.color = "#64748B";
+    disclaimer.style.color = "var(--text-tertiary)";
 
     container.append(title, details, description, disclaimer);
 
@@ -215,6 +361,7 @@ export default function MapView({
         for (const item of renderedItems) {
             const {
                 sourceId,
+                casingLayerId,
                 layerId,
                 arrowLayerId,
                 handlers,
@@ -234,6 +381,9 @@ export default function MapView({
                 map.removeLayer(arrowLayerId);
             }
             if (map.getLayer(layerId)) map.removeLayer(layerId);
+            if (casingLayerId && map.getLayer(casingLayerId)) {
+                map.removeLayer(casingLayerId);
+            }
             if (map.getSource(sourceId)) map.removeSource(sourceId);
         }
 
@@ -361,7 +511,7 @@ export default function MapView({
 
         if (!originMarkerRef.current) {
             originMarkerRef.current = new maplibregl.Marker({
-                color: "#2563EB"
+                color: tokenValue("--info")
             })
                 .setLngLat(toLngLat(location))
                 .setPopup(new maplibregl.Popup().setText("Tu ubicación"))
@@ -402,7 +552,7 @@ export default function MapView({
 
         if (!destinationMarkerRef.current) {
             destinationMarkerRef.current = new maplibregl.Marker({
-                color: "#DC2626"
+                color: tokenValue("--amber")
             })
                 .setLngLat(toLngLat(destination))
                 .setPopup(new maplibregl.Popup().setText("Destino"))
@@ -441,7 +591,7 @@ export default function MapView({
                     type: "FeatureCollection",
                     properties: {
                         name: "Recorrido caminando",
-                        color: "#08A6C9",
+                        color: tokenValue("--info"),
                         walking: true
                     },
                     features: [{
@@ -457,10 +607,18 @@ export default function MapView({
                     }]
                 }
                 : null;
+        const walkingConnections = plannedWalkingConnections(
+            planOption,
+            location,
+            destination
+        );
         const displayedRoutes = walkingGeojson
             ? [walkingGeojson]
             : plannedGeojsons.length > 0
-                ? plannedGeojsons
+                ? [
+                    ...plannedGeojsons,
+                    ...(walkingConnections ? [walkingConnections] : [])
+                ]
                 : geojson
                     ? [geojson]
                     : [];
@@ -472,6 +630,7 @@ export default function MapView({
 
             displayedRoutes.forEach((routeGeojson, index) => {
                 const sourceId = `route-source-${index}`;
+                const casingLayerId = `route-casing-layer-${index}`;
                 const layerId = `route-layer-${index}`;
                 const arrowLayerId = `route-arrow-layer-${index}`;
                 const baseColor = getRouteColor(routeGeojson);
@@ -479,8 +638,12 @@ export default function MapView({
                 const isWalking = Boolean(
                     routeGeojson?.properties?.walking
                 );
-                const endpoints = routeEndpoints(planOption, index);
-                const visualization = plannedGeojsons.length > 0
+                const endpoints = isWalking
+                    ? null
+                    : routeEndpoints(planOption, index);
+                const visualization = isWalking
+                    ? styleManualRoute(routeGeojson)
+                    : plannedGeojsons.length > 0
                     ? segmentCalculatedRoute(
                         routeGeojson,
                         endpoints.start,
@@ -492,17 +655,47 @@ export default function MapView({
                     : plannedGeojsons.length > 0
                         ? 6
                         : 5;
+                const routeWidthBoost =
+                    plannedGeojsons.length > 0 && window.innerWidth <= 720
+                        ? 1.25
+                        : 0;
+                const routeWidthExpression = routeWidthBoost > 0
+                    ? ["+", ["get", "renderWidth"], routeWidthBoost]
+                    : ["get", "renderWidth"];
+                const casingWidthExpression = [
+                    "+",
+                    routeWidthExpression,
+                    plannedGeojsons.length > 0 ? 5 : 4
+                ];
+                const casingOpacityExpression = [
+                    "*",
+                    ["get", "renderOpacity"],
+                    resolvedTheme === "dark" ? 0.72 : 0.58
+                ];
 
                 map.addSource(sourceId, {
                     type: "geojson",
                     data: visualization
                 });
                 map.addLayer({
+                    id: casingLayerId,
+                    type: "line",
+                    source: sourceId,
+                    paint: {
+                        "line-width": casingWidthExpression,
+                        "line-opacity": casingOpacityExpression,
+                        "line-color":
+                            resolvedTheme === "dark"
+                                ? tokenValue("--night")
+                                : tokenValue("--text-primary")
+                    }
+                });
+                map.addLayer({
                     id: layerId,
                     type: "line",
                     source: sourceId,
                     paint: {
-                        "line-width": ["get", "renderWidth"],
+                        "line-width": routeWidthExpression,
                         "line-opacity": ["get", "renderOpacity"],
                         "line-color": ["get", "renderColor"],
                         ...(isWalking
@@ -529,8 +722,8 @@ export default function MapView({
                         "text-opacity": ["get", "renderOpacity"],
                         "text-halo-color":
                             resolvedTheme === "dark"
-                                ? "#07101D"
-                                : "#FFFFFF",
+                                ? tokenValue("--night")
+                                : tokenValue("--text-primary"),
                         "text-halo-width": 1.25
                     }
                 });
@@ -561,7 +754,7 @@ export default function MapView({
                         map.setPaintProperty(
                             layerId,
                             "line-width",
-                            ["get", "renderWidth"]
+                            routeWidthExpression
                         );
                         popup.remove();
                     }
@@ -577,6 +770,7 @@ export default function MapView({
 
                 renderedLayersRef.current.push({
                     sourceId,
+                    casingLayerId,
                     layerId,
                     arrowLayerId,
                     handlers,
@@ -607,6 +801,58 @@ export default function MapView({
     useEffect(() => {
         const map = mapRef.current;
 
+        if (!map || plannedGeojsons.length === 0) return;
+
+        const routeCoordinates = plannedGeojsons.flatMap((routeGeojson, index) => {
+            if (!planOption || planOption.type === "walk") {
+                return boundsFromFeatureCollection(routeGeojson);
+            }
+
+            const endpoints = routeEndpoints(planOption, index);
+
+            return boundsFromFeatureCollection(
+                segmentCalculatedRoute(
+                    routeGeojson,
+                    endpoints.start,
+                    endpoints.end
+                )
+            );
+        });
+        const focusCoordinates = planFocusCoordinates(
+            planOption,
+            location,
+            destination
+        );
+        const coordinates = focusCoordinates.length >= 2
+            ? focusCoordinates
+            : routeCoordinates;
+        if (coordinates.length === 0) return;
+
+        const bounds = coordinates.reduce(
+            (current, coordinate) => current.extend(coordinate),
+            new maplibregl.LngLatBounds(
+                coordinates[0],
+                coordinates[0]
+            )
+        );
+
+        map.fitBounds(bounds, {
+            padding: fitBoundsPadding({ planned: true }),
+            maxZoom: window.innerWidth <= 720 ? 12.2 : 13.2,
+            duration: animationsEnabled ? 900 : 0,
+            essential: true
+        });
+    }, [
+        animationsEnabled,
+        destination,
+        location,
+        planOption,
+        plannedGeojsons
+    ]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+
         if (!map || !geojson || plannedGeojsons.length > 0) return;
 
         const coordinates = boundsFromFeatureCollection(
@@ -623,12 +869,7 @@ export default function MapView({
         );
 
         map.fitBounds(bounds, {
-            padding: {
-                top: 96,
-                right: window.innerWidth > 720 ? 88 : 42,
-                bottom: 96,
-                left: window.innerWidth > 720 ? 500 : 42
-            },
+            padding: fitBoundsPadding(),
             maxZoom: 13.5,
             duration: animationsEnabled ? 900 : 0,
             essential: true
@@ -645,9 +886,11 @@ export default function MapView({
             planOption?.type === "walk"
         ) return;
 
+        const isMobile = window.innerWidth <= 720;
+
         map.easeTo({
-            pitch: 46,
-            bearing: -7,
+            pitch: isMobile ? 34 : 46,
+            bearing: isMobile ? -5 : -7,
             duration: 700,
             essential: true
         });
@@ -721,9 +964,7 @@ export default function MapView({
                         id: report.id,
                         severity: report.severity,
                         radiusMeters: report.radiusMeters,
-                        color:
-                            communitySeverityColors[report.severity] ??
-                            "#94A3B8"
+                        color: communitySeverityColor(report.severity)
                     },
                     geometry: {
                         type: "Point",
@@ -784,12 +1025,11 @@ export default function MapView({
                 element.style.width = "18px";
                 element.style.height = "18px";
                 element.style.borderRadius = "50%";
-                element.style.border = "3px solid #FFFFFF";
-                element.style.background =
-                    communitySeverityColors[report.severity] ??
-                    "#94A3B8";
-                element.style.boxShadow =
-                    "0 3px 12px rgba(15, 23, 42, 0.4)";
+                element.style.border = "3px solid var(--text-primary)";
+                element.style.background = communitySeverityColor(
+                    report.severity
+                );
+                element.style.boxShadow = "var(--shadow-marker)";
                 element.style.cursor = "pointer";
                 element.addEventListener(
                     "click",
@@ -862,7 +1102,7 @@ export default function MapView({
 
             points.push({
                 location: transfer.fromPoint,
-                color: "#7C3AED",
+                color: tokenValue("--route-3"),
                 type: "transfer",
                 label: "Punto de transbordo aproximado"
             });
@@ -876,7 +1116,7 @@ export default function MapView({
             ) {
                 points.push({
                     location: transfer.toPoint,
-                    color: "#A855F7",
+                    color: tokenValue("--route-3-return"),
                     type: "transfer",
                     label: "Continuación del transbordo aproximado"
                 });
