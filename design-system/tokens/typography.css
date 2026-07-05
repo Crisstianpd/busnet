@@ -1,0 +1,40 @@
+/* ============================================================
+   BusNET · Typography tokens
+   Display/UI: Manrope (bold for route numbers & big ETAs).
+   Mono: JetBrains Mono (placas, códigos de unidad).
+   ============================================================ */
+
+:root {
+  --font-display: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Manrope", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Roboto Mono", monospace;
+
+  /* Weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Type scale (mobile-first; px values, generous for street use) */
+  --text-display: 40px;     /* ETA hero, splash number  / lh 44 */
+  --text-h1: 28px;          /* screen titles            / lh 34 */
+  --text-h2: 22px;          /* section headers          / lh 28 */
+  --text-h3: 18px;          /* card titles              / lh 24 */
+  --text-body-lg: 17px;     /* primary reading          / lh 24 */
+  --text-body: 15px;        /* default body             / lh 21 */
+  --text-sm: 13px;          /* secondary                / lh 18 */
+  --text-xs: 11px;          /* labels, captions         / lh 14 */
+  --text-route: 20px;       /* route number on markers  / lh 20 */
+  --text-eta-hero: 56px;    /* "6 min" tracking hero    / lh 56 */
+
+  /* Line heights */
+  --lh-tight: 1.05;   /* @kind other */
+  --lh-snug: 1.25;    /* @kind other */
+  --lh-normal: 1.45;  /* @kind other */
+
+  /* Letter spacing */
+  --tracking-label: 0.06em;   /* uppercase eyebrow labels */
+  --tracking-tight: -0.01em;  /* large display numbers */
+  --tracking-normal: 0;
+}

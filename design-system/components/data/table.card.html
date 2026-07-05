@@ -1,0 +1,60 @@
+<!-- @dsCard group="Components" viewport="700x260" name="TableRow" subtitle="Fleet units table + live checking log" -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; background: var(--night); font-family: var(--font-ui); padding: 24px; }
+  .panel { background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--radius-lg); overflow: hidden; }
+  .mono { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--text-primary); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+  const { TableRow, Badge } = window.BusNETDesignSystem_abb9a1;
+  const cols = "120px 64px 1fr 130px 70px";
+  function Demo() {
+    return (
+      <div className="panel">
+        <TableRow head columns={cols} cells={["Unidad","Ruta","Motorista","Estado","Vueltas"]} />
+        <TableRow columns={cols} cells={[
+          <span className="mono">P-482-AB</span>,
+          <Badge variant="route" color="var(--route-1)">30B</Badge>,
+          "José Martínez",
+          <Badge variant="success" icon="check">En ruta</Badge>,
+          "7",
+        ]} />
+        <TableRow entering columns={cols} cells={[
+          <span className="mono">P-118-CD</span>,
+          <Badge variant="route" color="var(--route-6)">7D</Badge>,
+          "María Alvarado",
+          <Badge variant="live">Checking</Badge>,
+          "5",
+        ]} />
+        <TableRow columns={cols} cells={[
+          <span className="mono">P-903-EF</span>,
+          <Badge variant="route" color="var(--route-4)">42</Badge>,
+          "Carlos Rivas",
+          <Badge variant="neutral">Detenido</Badge>,
+          "6",
+        ]} />
+        <TableRow columns={cols} cells={[
+          <span className="mono">P-256-GH</span>,
+          <Badge variant="route" color="var(--route-3)">101</Badge>,
+          "Ana Beltrán",
+          <Badge variant="warning" icon="triangle-alert">Retraso</Badge>,
+          "4",
+        ]} />
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(<Demo />);
+</script>
+</body>
+</html>
