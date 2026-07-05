@@ -30,15 +30,6 @@ function formatDistance(value, fallback = "No disponible") {
     return `${rounded} m`;
 }
 
-function formatPoint(point) {
-    if (
-        !Number.isFinite(point?.latitude) ||
-        !Number.isFinite(point?.longitude)
-    ) return "Coordenadas no disponibles";
-
-    return `GPS ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
-}
-
 function routeDetail(option, index) {
     const route = option.routes?.[index] ?? "";
     const detail = option.routeDetails?.[index] ?? {};
@@ -93,6 +84,16 @@ function tripTypeLabel(option) {
 
 function busLegs(option) {
     return (option.legs ?? []).filter(leg => leg.type === "bus");
+}
+
+function walkingCue(distanceMeters, fallback) {
+    const meters = Math.round(Number(distanceMeters) || 0);
+
+    if (meters <= 1) return "La ruta pasa por este punto";
+    if (meters <= 80) return "Caminata corta";
+    if (meters <= 350) return "Caminata moderada";
+
+    return fallback;
 }
 
 function RoutePill({ detail, compact = false }) {
@@ -171,7 +172,10 @@ function buildSteps(option) {
         type: "walk",
         title: "Caminá al punto de abordaje",
         detail: formatDistance(option.boardingDistanceMeters),
-        meta: formatPoint(option.boardingPoint),
+        meta: walkingCue(
+            option.boardingDistanceMeters,
+            "Seguí el mapa hasta la ruta sugerida"
+        ),
         icon: "footprints"
     }];
 
@@ -195,7 +199,10 @@ function buildSteps(option) {
                 type: "transfer",
                 title: `Transbordá a ${transfer.toRoute}`,
                 detail: formatDistance(transfer.walkingDistanceMeters),
-                meta: formatPoint(transfer.fromPoint),
+                meta: walkingCue(
+                    transfer.walkingDistanceMeters,
+                    "Cambio a pie entre rutas cercanas"
+                ),
                 icon: "repeat"
             });
         }
@@ -205,7 +212,10 @@ function buildSteps(option) {
         type: "destination",
         title: "Bajate cerca del destino",
         detail: `${formatDistance(option.destinationDistanceMeters)} a pie`,
-        meta: formatPoint(option.dropoffPoint),
+        meta: walkingCue(
+            option.destinationDistanceMeters,
+            "Último tramo caminando"
+        ),
         icon: "flag"
     });
 
