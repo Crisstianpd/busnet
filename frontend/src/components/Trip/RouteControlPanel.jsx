@@ -67,7 +67,7 @@ export default function RouteControlPanel({
         const frameId = window.requestAnimationFrame(resetScroll);
 
         return () => window.cancelAnimationFrame(frameId);
-    }, [routeCalculated, mobileSheetExpanded]);
+    }, [routeCalculated, mobileSheetExpanded, planning]);
 
     const collapseMobileSheet = () => {
         if (typeof window !== "undefined" && window.innerWidth <= 720) {

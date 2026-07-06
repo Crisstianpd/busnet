@@ -377,16 +377,24 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    background: linear-gradient(
-        135deg,
-        var(--busnet-green),
-        var(--busnet-green-600)
-    );
+    border: 1px solid color-mix(in srgb, var(--busnet-green) 58%, transparent);
+    background:
+        radial-gradient(
+            circle at 20% 0,
+            color-mix(in srgb, var(--text-on-green) 26%, transparent),
+            transparent 36%
+        ),
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--busnet-green) 94%, var(--ui-surface)),
+            var(--busnet-green-600)
+        );
     color: var(--text-on-green);
     box-shadow:
         var(--shadow-md),
         0 0 0 1px color-mix(in srgb, var(--busnet-green) 44%, transparent),
         0 14px 30px color-mix(in srgb, var(--busnet-green) 24%, transparent);
+    backdrop-filter: blur(12px);
 }
 
 .route-control-primary:not(:disabled):hover,
@@ -396,12 +404,17 @@
 }
 
 .route-control-primary:disabled {
-    border: 1px solid color-mix(in srgb, var(--ui-border) 72%, var(--busnet-green));
-    background: color-mix(in srgb, var(--ui-surface-soft) 88%, var(--night));
-    color: var(--ui-muted);
+    border: 1px solid color-mix(in srgb, var(--busnet-green) 30%, var(--ui-border));
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--busnet-green) 18%, var(--ui-surface-soft)),
+            color-mix(in srgb, var(--ui-surface-soft) 88%, transparent)
+        );
+    color: color-mix(in srgb, var(--ui-text) 74%, var(--ui-muted));
     box-shadow:
         inset 0 1px 0 color-mix(in srgb, var(--text-primary) 12%, transparent),
-        0 10px 22px color-mix(in srgb, var(--night) 18%, transparent);
+        0 10px 22px color-mix(in srgb, var(--ui-shadow) 34%, transparent);
     cursor: not-allowed;
     opacity: 1;
 }
@@ -605,44 +618,18 @@
     }
 
     .route-control-panel.is-planned .route-control-fields {
-        order: -1;
-        gap: var(--space-2);
+        display: none;
     }
 
-    .route-control-panel.is-planned .route-control-field {
-        padding-left: var(--space-8);
-    }
-
-    .route-control-panel.is-planned .route-control-field label {
-        margin-bottom: 2px;
-    }
-
-    .route-control-panel.is-planned .route-control-field input {
-        min-height: 40px;
-        font-size: var(--text-sm);
-    }
-
-    .route-control-panel.is-planned .route-control-line {
-        top: 32px;
-        bottom: 32px;
-        left: 13px;
-    }
-
-    .route-control-panel.is-planned .route-control-marker {
-        top: 26px;
-        left: 5px;
-    }
-
-    .route-control-panel.is-planned .route-control-status {
-        min-height: 0;
-        font-size: var(--text-xs);
-    }
-
-    .route-control-panel.is-planned .route-control-primary {
-        min-height: 42px;
+    .route-control-panel.is-planned .route-control-results,
+    .route-control-panel.is-planned .route-control-status,
+    .route-control-panel.is-planned .route-control-primary,
+    .route-control-panel.is-planned .route-control-manual {
+        display: none;
     }
 
     .route-control-panel.is-planned .route-control-trip-actions {
+        order: 1;
         grid-template-columns: 1fr;
     }
 

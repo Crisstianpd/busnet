@@ -282,6 +282,9 @@ export default function Home() {
 
         setPlanningError("");
         setTripMessage("");
+        setActiveLocationField(null);
+        setSelectionMode(null);
+        setSearchResults([]);
         setPlanning(true);
         setTripCleanupToken(value => value + 1);
 
