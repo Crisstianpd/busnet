@@ -1,0 +1,9 @@
+/* ============================================================
+   BusNET · Webfonts
+   Manrope (display/UI) + JetBrains Mono (placas/códigos).
+   Served from Google Fonts static CDN so consumers need no
+   local binaries. If you prefer self-hosting, drop woff2 files
+   under assets/fonts/ and repoint these src urls.
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");

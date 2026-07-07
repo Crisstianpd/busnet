@@ -1,0 +1,52 @@
+/* ============================================================
+   BusNET Fleet — dashboard layout shell.
+   Only layout containers live here; component visuals are inline
+   (design-system tokens), mirroring the ui_kit mockup. Dark-first.
+   ============================================================ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--night);
+  color: var(--text-primary);
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+
+#fleet-root {
+  min-height: 100vh;
+}
+
+.fleet-app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--night);
+}
+
+.fleet-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px;
+}
+
+/* two-column body: units table (wide) + right rail (mini map + checking log) */
+.fleet-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.fleet-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Below the 1440px desktop target, collapse to a single column so the panel
+   stays legible if opened on a narrower screen. */
+@media (max-width: 1100px) {
+  .fleet-grid {
+    grid-template-columns: 1fr;
+  }
+}

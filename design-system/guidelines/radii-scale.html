@@ -1,0 +1,17 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Radios de esquina" subtitle="Amable 12–16px · sheets 24px arriba" -->
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;background:var(--night);font-family:var(--font-ui);padding:24px;display:flex;gap:16px;align-items:flex-end}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .box{width:84px;height:64px;background:var(--surface-raised);border:1px solid var(--hairline-strong)}
+  .nm{font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary)}
+  .sheet{width:110px;height:64px;background:var(--surface-raised);border:1px solid var(--hairline-strong);border-radius:var(--radius-sheet) var(--radius-sheet) 0 0}
+</style></head><body>
+  <div class="cell"><div class="box" style="border-radius:var(--radius-sm)"></div><div class="nm">sm 8</div></div>
+  <div class="cell"><div class="box" style="border-radius:var(--radius-md)"></div><div class="nm">md 12</div></div>
+  <div class="cell"><div class="box" style="border-radius:var(--radius-lg)"></div><div class="nm">lg 16</div></div>
+  <div class="cell"><div class="box" style="border-radius:var(--radius-xl)"></div><div class="nm">xl 20</div></div>
+  <div class="cell"><div class="sheet"></div><div class="nm">sheet 24</div></div>
+  <div class="cell"><div class="box" style="border-radius:var(--radius-pill);width:64px"></div><div class="nm">pill</div></div>
+</body></html>

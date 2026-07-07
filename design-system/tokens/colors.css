@@ -1,0 +1,72 @@
+/* ============================================================
+   BusNET · Color tokens
+   Dark-first transit UI. Night-blue surfaces, BusNET green brand,
+   amber for ETA/alerts, red for errors, 8 categorical route colors.
+   ============================================================ */
+
+:root {
+  /* ---- Brand ---- */
+  --busnet-green: #00D26A;        /* primary action, active route, success */
+  --busnet-green-600: #00B85C;    /* pressed / hover-darker */
+  --busnet-green-300: #4DE49A;    /* lighter tint (return direction, focus rings) */
+  --busnet-green-glow: rgba(0, 210, 106, 0.28);
+
+  /* ---- Night surfaces (dark theme, default) ---- */
+  --night: #0B1220;               /* app background / dark map canvas */
+  --surface: #141C2B;             /* base surface (sheets, cards) */
+  --surface-raised: #1D2839;      /* elevated surface (rows, inputs, popovers) */
+  --surface-overlay: rgba(11, 18, 32, 0.72); /* scrim over map */
+  --hairline: rgba(147, 161, 181, 0.16);     /* borders on dark */
+  --hairline-strong: rgba(147, 161, 181, 0.28);
+
+  /* ---- Text ---- */
+  --text-primary: #F3F6FB;
+  --text-secondary: #93A1B5;
+  --text-tertiary: #6B7A90;       /* metadata, disabled labels */
+  --text-on-green: #062015;       /* text sitting on the green button */
+  --text-on-amber: #2A1A00;
+
+  /* ---- Semantic ---- */
+  --amber: #FFB020;               /* alerts, ETA emphasis, premium */
+  --amber-600: #E89A08;
+  --amber-glow: rgba(255, 176, 32, 0.24);
+  --red: #FF4D4D;                 /* errors / emergency only */
+  --red-600: #E23A3A;
+  --red-glow: rgba(255, 77, 77, 0.22);
+  --info: #3B9CFF;                /* neutral informational (walking legs) */
+
+  /* ---- State overlays (compose over any surface) ---- */
+  --state-hover: rgba(255, 255, 255, 0.06);
+  --state-pressed: rgba(0, 0, 0, 0.22);
+  --state-selected: rgba(0, 210, 106, 0.14);
+  --state-disabled-fg: rgba(147, 161, 181, 0.45);
+  --state-disabled-bg: rgba(147, 161, 181, 0.10);
+
+  /* ---- Map protection gradient (top scrim behind search bar) ---- */
+  --scrim-top: linear-gradient(180deg, rgba(11,18,32,0.92) 0%, rgba(11,18,32,0.55) 55%, rgba(11,18,32,0) 100%);   /* @kind other */
+  --scrim-bottom: linear-gradient(0deg, rgba(11,18,32,0.94) 0%, rgba(11,18,32,0) 100%);   /* @kind other */
+
+  /* =========================================================
+     Route palette — 8 categorical colors, tuned for legibility
+     on the #0B1220 night map. Bus markers, painted polylines,
+     leg chips. Order matters: assign r1..r8 in sequence.
+     ========================================================= */
+  --route-1: #00D26A;   /* verde   (BusNET brand)   */
+  --route-2: #26D9D9;   /* cian                     */
+  --route-3: #8B7CFF;   /* violeta                  */
+  --route-4: #FFB020;   /* ámbar                    */
+  --route-5: #FF5DA2;   /* rosa                     */
+  --route-6: #3B9CFF;   /* azul                     */
+  --route-7: #B4E44D;   /* lima                     */
+  --route-8: #FF8A3D;   /* naranja                  */
+
+  /* Return-direction tints (matches repo lightenColor(45%)) */
+  --route-1-return: #62E4A3;
+  --route-2-return: #7FE9E9;
+  --route-3-return: #BDB4FF;
+  --route-4-return: #FFD07E;
+  --route-5-return: #FF9EC8;
+  --route-6-return: #8CC4FF;
+  --route-7-return: #D3EF97;
+  --route-8-return: #FFBB8A;
+}
